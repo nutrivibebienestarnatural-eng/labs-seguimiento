@@ -5,6 +5,107 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Labs Nutrition — CRM</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getFirestore, doc, setDoc, getDoc, collection, addDoc, getDocs, orderBy, query, limit } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAD2js-31425Se-CuHFR_L-f3BgvBKQ7GQ",
+      authDomain: "labs-nutrition.firebaseapp.com",
+      projectId: "labs-nutrition",
+      storageBucket: "labs-nutrition.firebasestorage.app",
+      messagingSenderId: "1079814470153",
+      appId: "1:1079814470153:web:98e1c26de4147f1e1856d8"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    window._db = db;
+    window._fbReady = true;
+    window._setDoc = setDoc;
+    window._getDoc = getDoc;
+    window._doc = doc;
+    window._addDoc = addDoc;
+    window._collection = collection;
+    window._getDocs = getDocs;
+    window._query = query;
+    window._orderBy = orderBy;
+    window._limit = limit;
+
+    // Cargar datos al iniciar
+    window.addEventListener('load', async () => {
+      try {
+        setStatus('sync', '🔄 Conectando con la base de datos...');
+        const snap = await getDoc(doc(db, 'datos', 'clientes'));
+        if (snap.exists()) {
+          const data = snap.data();
+          window._clientes = data.lista || [];
+          window._lastImport = data.lastImport || '';
+          if (window._clientes.length > 0) {
+            window.clientes = window._clientes;
+            updateStats(); renderPanel(); renderReactivar(); renderNiveles('');
+            document.getElementById('bnav-c').textContent = clientes.length;
+            document.getElementById('bnav-d').textContent = clientes.filter(c=>c.dias>90).length;
+            setStatus('ok', '✅ Datos cargados — última importación: <strong>' + window._lastImport + '</strong>');
+          } else {
+            setStatus('info', '📥 No hay datos todavía. Importá el CSV de Tienda Nube.');
+          }
+        } else {
+          setStatus('info', '📥 Primera vez. Importá el CSV de Tienda Nube desde la PC.');
+        }
+        // Cargar historial
+        await cargarHistorial();
+      } catch(e) {
+        setStatus('err', '⚠️ Error al conectar. Verificá tu conexión a internet.');
+        console.error(e);
+      }
+    });
+
+    window.guardarEnFirebase = async function(clientesData, lastImport) {
+      try {
+        setStatus('sync', '☁️ Guardando en la nube...');
+        // Guardar version liviana (sin compras detalle completo)
+        const liviano = clientesData.map(c => ({
+          Nombre: c.Nombre, Email: c.Email, Telefono: c.Telefono,
+          Total_gastado: c.Total_gastado, Cantidad_compras: c.Cantidad_compras,
+          Ultima_compra_str: c.Ultima_compra_str, Ciudad: c.Ciudad,
+          Provincia: c.Provincia || '', dias: c.dias,
+          Productos: c.Productos || [],
+          Compras_detalle: (c.Compras_detalle || []).slice(0, 10)
+        }));
+        await setDoc(doc(db, 'datos', 'clientes'), {
+          lista: liviano,
+          lastImport: lastImport,
+          updatedAt: new Date().toISOString()
+        });
+        setStatus('ok', '✅ Datos guardados en la nube — PC y celular sincronizados 📱💻');
+      } catch(e) {
+        setStatus('err', '❌ Error al guardar en la nube: ' + e.message);
+        console.error(e);
+      }
+    };
+
+    window.guardarMensaje = async function(msgData) {
+      try {
+        await addDoc(collection(db, 'mensajes'), {
+          ...msgData,
+          timestamp: new Date().toISOString()
+        });
+        await cargarHistorial();
+      } catch(e) { console.error('Error guardando mensaje:', e); }
+    };
+
+    async function cargarHistorial() {
+      try {
+        const q = query(collection(db, 'mensajes'), orderBy('timestamp', 'desc'), limit(100));
+        const snap = await getDocs(q);
+        window._historial = snap.docs.map(d => d.data());
+        renderHistorial();
+        document.getElementById('bnav-h').textContent = window._historial.length;
+      } catch(e) { console.error('Error cargando historial:', e); }
+    }
+    window.cargarHistorial = cargarHistorial;
+  </script>
   <style>
     :root {
       --verde:#16a34a;--verde-c:#dcfce7;--verde-t:#14532d;
@@ -13,19 +114,21 @@
       --amber:#fef3c7;--amber-t:#92400e;
       --rojo:#fee2e2;--rojo-t:#991b1b;
       --azul:#dbeafe;--azul-t:#1e40af;
-      --oro:#fef08a;--oro-t:#713f12;
-      --plata:#f1f5f9;--plata-t:#334155;
-      --bronce:#fed7aa;--bronce-t:#7c2d12;
       --radio:10px;--sombra:0 1px 3px rgba(0,0,0,0.07);
     }
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f1f5f9;color:var(--texto);min-height:100vh}
     nav{background:var(--blanco);border-bottom:1px solid var(--borde);padding:0 1.5rem;display:flex;align-items:center;gap:.5rem;height:56px;position:sticky;top:0;z-index:100;box-shadow:var(--sombra);flex-wrap:wrap}
-    .logo{font-size:15px;font-weight:700;color:var(--verde);margin-right:.5rem}
+    .logo{font-size:15px;font-weight:700;color:var(--verde);margin-right:.5rem;white-space:nowrap}
     .nav-tab{padding:5px 11px;border-radius:8px;font-size:12px;border:none;background:transparent;cursor:pointer;color:var(--gris-t);font-weight:500;white-space:nowrap}
     .nav-tab:hover{background:var(--gris)}
     .nav-tab.active{background:var(--verde-c);color:var(--verde-t)}
     .bnav{background:var(--verde);color:white;font-size:10px;padding:1px 5px;border-radius:99px;margin-left:3px;font-weight:700}
+    .sync-bar{padding:8px 1.5rem;font-size:12px;font-weight:500;display:none;border-bottom:1px solid var(--borde)}
+    .sync-ok{background:var(--verde-c);color:var(--verde-t)}
+    .sync-err{background:var(--rojo);color:var(--rojo-t)}
+    .sync-info{background:var(--azul);color:var(--azul-t)}
+    .sync-sync{background:var(--amber);color:var(--amber-t)}
     main{max-width:1150px;margin:0 auto;padding:1.5rem 1rem}
     .panel{display:none}.panel.active{display:block}
     .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.5rem}
@@ -48,14 +151,12 @@
     .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;font-weight:600}
     .bv{background:var(--verde-c);color:var(--verde-t)}
     .ba{background:var(--amber);color:var(--amber-t)}
-    .br{background:var(--rojo);color:var(--rojo-t)}
+    .br2{background:var(--rojo);color:var(--rojo-t)}
     .bb{background:var(--azul);color:var(--azul-t)}
-    /* NIVELES */
-    .nivel-oro{background:var(--oro);color:var(--oro-t);font-size:12px;padding:3px 10px;border-radius:99px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
-    .nivel-plata{background:var(--plata);color:var(--plata-t);font-size:12px;padding:3px 10px;border-radius:99px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
-    .nivel-bronce{background:var(--bronce);color:var(--bronce-t);font-size:12px;padding:3px 10px;border-radius:99px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+    .nivel-oro{background:#fef08a;color:#713f12;font-size:12px;padding:3px 10px;border-radius:99px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+    .nivel-plata{background:#f1f5f9;color:#334155;font-size:12px;padding:3px 10px;border-radius:99px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+    .nivel-bronce{background:#fed7aa;color:#7c2d12;font-size:12px;padding:3px 10px;border-radius:99px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
     .nivel-nuevo{background:var(--gris);color:var(--gris-t);font-size:12px;padding:3px 10px;border-radius:99px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
-    /* BOTONES */
     .btn-msg{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:4px 9px;border-radius:7px;border:1.5px solid #3b82f6;color:#1d4ed8;background:transparent;cursor:pointer;font-weight:600}
     .btn-msg:hover{background:var(--azul)}
     .btn-wa{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:4px 9px;border-radius:7px;border:1.5px solid #22c55e;color:#16a34a;background:transparent;text-decoration:none;cursor:pointer;font-weight:600}
@@ -64,10 +165,9 @@
     .btn-hist:hover{background:var(--gris)}
     .bg{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
     .env-tag{font-size:11px;color:var(--verde-t);background:var(--verde-c);border-radius:99px;padding:2px 7px;font-weight:600}
-    /* MODAL */
     .mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:200;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto}
     .mbg.open{display:flex}
-    .modal{background:var(--blanco);border-radius:14px;padding:1.5rem;max-width:600px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.25);margin:auto}
+    .modal{background:var(--blanco);border-radius:14px;padding:1.5rem;max-width:580px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.25);margin:auto}
     .mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
     .mt{font-size:16px;font-weight:700}
     .mx{background:none;border:none;font-size:22px;cursor:pointer;color:var(--gris-t);line-height:1}
@@ -82,17 +182,6 @@
     .btn-copy.ok{background:var(--verde-c);color:var(--verde-t);border-color:#86efac}
     .btn-send{padding:8px 18px;border-radius:8px;border:none;background:#25D366;color:white;font-size:13px;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:6px}
     .btn-send:hover{background:#1da851}
-    /* MODAL HISTORIAL */
-    .hist-sec{margin-bottom:1rem}
-    .hist-title{font-size:13px;font-weight:600;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--borde)}
-    .hist-item{padding:8px 10px;border-radius:8px;background:var(--gris);margin-bottom:6px;font-size:13px}
-    .hist-item-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
-    .hist-item strong{color:var(--texto)}
-    .hist-date{font-size:11px;color:var(--gris-t)}
-    .hist-item p{font-size:12px;color:var(--gris-t);line-height:1.5}
-    .hist-prod{font-size:12px;color:var(--gris-t)}
-    .empty-hist{font-size:13px;color:var(--gris-t);text-align:center;padding:1rem}
-    /* IMPORT */
     .imp-sec{max-width:640px;margin:0 auto}
     .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem}
     @media(max-width:600px){.steps{grid-template-columns:1fr}}
@@ -104,13 +193,6 @@
     .drop h3{font-size:16px;font-weight:600;margin:.75rem 0 4px}
     .drop p{font-size:13px;color:var(--gris-t)}
     .file-input{display:none}
-    .sbox{margin-top:1rem;padding:12px 16px;border-radius:var(--radio);font-size:13px;display:none;font-weight:500}
-    .sok{background:var(--verde-c);color:var(--verde-t);border:1px solid #86efac}
-    .serr{background:var(--rojo);color:var(--rojo-t);border:1px solid #fca5a5}
-    .sinf{background:var(--azul);color:var(--azul-t);border:1px solid #93c5fd}
-    .prev-box{margin-top:1.5rem;display:none}
-    .prev-box h4{font-size:13px;font-weight:600;margin-bottom:8px}
-    /* REACTIVAR */
     .rc{background:var(--blanco);border:1px solid var(--borde);border-radius:var(--radio);padding:1.25rem;margin-bottom:12px;box-shadow:var(--sombra)}
     .rc-name{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
     .rc-meta{font-size:12px;color:var(--gris-t);margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
@@ -121,16 +203,38 @@
     .flt{font-size:12px;padding:5px 12px;border-radius:99px;border:1px solid var(--borde);background:var(--blanco);color:var(--gris-t);cursor:pointer;font-weight:500}
     .flt.on{background:var(--verde);color:white;border-color:var(--verde)}
     .empty{text-align:center;padding:3rem;color:var(--gris-t);font-size:14px}
-    /* HISTORIAL PANEL */
     .info-banner{padding:10px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--radio);font-size:13px;color:#9a3412;margin-bottom:1rem}
     .rank{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--borde);color:var(--gris-t)}
-    .rg{background:#fef9c3;color:#854d0e}
-    .rs{background:#f1f5f9;color:#475569}
-    .rb{background:#fff7ed;color:#9a3412}
+    .rg{background:#fef9c3;color:#854d0e}.rs{background:#f1f5f9;color:#475569}.rb{background:#fff7ed;color:#9a3412}
     .trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .hist-sec{margin-bottom:1rem}
+    .hist-title{font-size:13px;font-weight:600;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--borde)}
+    .hist-item{padding:8px 10px;border-radius:8px;background:var(--gris);margin-bottom:6px;font-size:13px}
+    .hist-item-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+    .hist-item strong{color:var(--texto)}
+    .hist-date{font-size:11px;color:var(--gris-t)}
+    .hist-item p{font-size:12px;color:var(--gris-t);line-height:1.5}
+    .empty-hist{font-size:13px;color:var(--gris-t);text-align:center;padding:1rem}
+    @media(max-width:600px){
+      nav{height:auto;padding:.5rem .75rem;gap:3px}
+      .logo{font-size:13px}
+      .nav-tab{font-size:11px;padding:4px 7px}
+      main{padding:1rem .75rem}
+      .stats-grid{grid-template-columns:repeat(2,1fr);gap:8px}
+      .sc-v{font-size:18px}
+      .ch{flex-direction:column;align-items:flex-start;gap:8px}
+      .srch{width:100%;margin-left:0}
+      th:nth-child(7),td:nth-child(7),th:nth-child(6),td:nth-child(6){display:none}
+      .bg{gap:4px}
+      .btn-msg,.btn-wa,.btn-hist{font-size:11px;padding:3px 6px}
+      .modal{padding:1rem;border-radius:10px}
+      .drop{padding:2rem 1rem}
+    }
   </style>
 </head>
 <body>
+
+<div class="sync-bar" id="syncBar"></div>
 
 <nav>
   <div class="logo">💊 Labs Nutrition</div>
@@ -147,7 +251,7 @@
     <div class="mh"><div class="mt">✉️ Enviar mensaje por WhatsApp</div><button class="mx" onclick="cModal()">✕</button></div>
     <div class="minfo" id="minfo"></div>
     <textarea class="mtxt" id="mtxt"></textarea>
-    <div class="mtip">💡 Podés editar el mensaje. Al hacer clic en "Abrir WhatsApp" se abre con el texto listo.</div>
+    <div class="mtip">💡 Podés editar el mensaje. Al tocar "Abrir WhatsApp" se abre con el texto listo.</div>
     <div class="mf">
       <button class="btn-cancel" onclick="cModal()">Cancelar</button>
       <button class="btn-copy" id="bcopy" onclick="copiarModal()">📋 Copiar</button>
@@ -156,10 +260,10 @@
   </div>
 </div>
 
-<!-- MODAL HISTORIAL CLIENTE -->
+<!-- MODAL HISTORIAL -->
 <div class="mbg" id="modalHist" onclick="if(event.target===this)cHist()">
   <div class="modal">
-    <div class="mh"><div class="mt" id="mh-title">📋 Historial del cliente</div><button class="mx" onclick="cHist()">✕</button></div>
+    <div class="mh"><div class="mt" id="mh-title">📋 Historial</div><button class="mx" onclick="cHist()">✕</button></div>
     <div id="mh-body"></div>
   </div>
 </div>
@@ -169,10 +273,13 @@
 <!-- IMPORTAR -->
 <div id="panel-importar" class="panel active">
   <div class="imp-sec">
+    <div style="background:var(--verde-c);border:1px solid #86efac;border-radius:var(--radio);padding:12px 16px;font-size:13px;color:var(--verde-t);margin-bottom:1.5rem">
+      ☁️ <strong>Sincronizado con la nube.</strong> Importá el CSV desde la PC y se actualiza automáticamente en el celular también.
+    </div>
     <div class="steps">
       <div class="step"><div class="snum">1</div><p>Andá a <strong>Tienda Nube → Ventas → Exportar</strong> y descargá el CSV</p></div>
       <div class="step"><div class="snum">2</div><p>Arrastrá el archivo acá o hacé clic para seleccionarlo</p></div>
-      <div class="step"><div class="snum">3</div><p>El panel, niveles, historial y mensajes se actualizan solos</p></div>
+      <div class="step"><div class="snum">3</div><p>Se guarda en la nube y el celular se actualiza solo 📱</p></div>
     </div>
     <div class="card">
       <div style="padding:1.5rem">
@@ -182,9 +289,8 @@
           <p>o hacé clic para buscar el archivo</p>
         </div>
         <input type="file" id="fi" class="file-input" accept=".csv" onchange="loadCSV(this.files[0])">
-        <div id="sbox" class="sbox"></div>
-        <div id="pbox" class="prev-box">
-          <h4>Vista previa:</h4>
+        <div id="pbox" style="margin-top:1rem;display:none">
+          <h4 style="font-size:13px;font-weight:600;margin-bottom:8px">Vista previa:</h4>
           <div class="tw card"><table><thead id="ph"></thead><tbody id="pb"></tbody></table></div>
         </div>
       </div>
@@ -199,7 +305,7 @@
     <div class="sc"><div class="sc-l">Clientes únicos</div><div class="sc-v" id="st-c">—</div><div class="sc-s">compradores</div></div>
     <div class="sc"><div class="sc-l">🥇 Oro</div><div class="sc-v" id="st-o">—</div><div class="sc-s">5+ compras</div></div>
     <div class="sc"><div class="sc-l">🥈 Plata</div><div class="sc-v" id="st-p">—</div><div class="sc-s">2-4 compras</div></div>
-    <div class="sc"><div class="sc-l">Dormidos +90d</div><div class="sc-v" id="st-d">—</div><div class="sc-s">sin comprar</div></div>
+    <div class="sc"><div class="sc-l">💤 Dormidos</div><div class="sc-v" id="st-d">—</div><div class="sc-s">+90 días sin comprar</div></div>
   </div>
   <div class="card">
     <div class="ch">
@@ -224,21 +330,21 @@
 
 <!-- REACTIVAR -->
 <div id="panel-reactivar" class="panel">
-  <div class="info-banner">⚠️ Clientes con +90 días sin comprar. Mensaje personalizado según sus productos — podés editarlo antes de enviar.</div>
-  <div id="rcards"><div class="empty">Importá un CSV para ver los mensajes de reactivación.</div></div>
+  <div class="info-banner">⚠️ Clientes con +90 días sin comprar. Mensaje personalizado según sus productos y nivel — editalo antes de enviar.</div>
+  <div id="rcards"><div class="empty">Importá un CSV para ver los mensajes.</div></div>
 </div>
 
 <!-- HISTORIAL -->
 <div id="panel-historial" class="panel">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem" id="hist-stats">
-    <div class="sc"><div class="sc-l">Mensajes enviados</div><div class="sc-v" id="hs-env">0</div><div class="sc-s">desde este dispositivo</div></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem">
+    <div class="sc"><div class="sc-l">Mensajes enviados</div><div class="sc-v" id="hs-env">0</div><div class="sc-s">registrados en la nube</div></div>
     <div class="sc"><div class="sc-l">Último envío</div><div class="sc-v" id="hs-ult" style="font-size:16px">—</div><div class="sc-s">fecha del último mensaje</div></div>
   </div>
   <div class="card">
     <div class="ch"><span class="ct">📋 Registro de mensajes enviados</span></div>
     <div class="tw">
       <table>
-        <thead><tr><th>Fecha y hora</th><th>Cliente</th><th>Teléfono</th><th>Mensaje enviado</th></tr></thead>
+        <thead><tr><th>Fecha</th><th>Cliente</th><th>Teléfono</th><th>Mensaje</th></tr></thead>
         <tbody id="hbody"></tbody>
       </table>
     </div>
@@ -247,35 +353,29 @@
 
 <!-- NIVELES -->
 <div id="panel-niveles" class="panel">
-  <div style="margin-bottom:1rem;padding:12px 16px;background:var(--verde-c);border:1px solid #86efac;border-radius:var(--radio);font-size:13px;color:var(--verde-t)">
-    🏅 Los niveles se calculan automáticamente según la cantidad de compras de cada cliente.
-  </div>
   <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem">
     <div class="sc" style="border-top:3px solid #eab308">
       <div style="font-size:24px;margin-bottom:6px">🥇</div>
-      <div class="sc-l">Oro</div>
-      <div class="sc-v" id="niv-o">—</div>
-      <div class="sc-s">5 o más compras · Beneficios VIP</div>
-      <div style="margin-top:10px;font-size:12px;color:var(--gris-t);line-height:1.5">✓ Envío gratis<br>✓ Descuento 15%<br>✓ Acceso anticipado a novedades<br>✓ Regalo en cada compra</div>
+      <div class="sc-l">Oro</div><div class="sc-v" id="niv-o">—</div>
+      <div class="sc-s">5 o más compras</div>
+      <div style="margin-top:10px;font-size:12px;color:var(--gris-t);line-height:1.6">✓ Envío gratis<br>✓ Descuento 15%<br>✓ Acceso anticipado<br>✓ Regalo en cada compra</div>
     </div>
     <div class="sc" style="border-top:3px solid #94a3b8">
       <div style="font-size:24px;margin-bottom:6px">🥈</div>
-      <div class="sc-l">Plata</div>
-      <div class="sc-v" id="niv-p">—</div>
-      <div class="sc-s">2 a 4 compras · Beneficios especiales</div>
-      <div style="margin-top:10px;font-size:12px;color:var(--gris-t);line-height:1.5">✓ Envío gratis en compras +$5000<br>✓ Descuento 8%<br>✓ Prioridad en atención</div>
+      <div class="sc-l">Plata</div><div class="sc-v" id="niv-p">—</div>
+      <div class="sc-s">2 a 4 compras</div>
+      <div style="margin-top:10px;font-size:12px;color:var(--gris-t);line-height:1.6">✓ Envío gratis +$5000<br>✓ Descuento 8%<br>✓ Prioridad en atención</div>
     </div>
     <div class="sc" style="border-top:3px solid #cd7c2f">
       <div style="font-size:24px;margin-bottom:6px">🥉</div>
-      <div class="sc-l">Bronce</div>
-      <div class="sc-v" id="niv-b">—</div>
-      <div class="sc-s">1 compra · Bienvenida</div>
-      <div style="margin-top:10px;font-size:12px;color:var(--gris-t);line-height:1.5">✓ Descuento 5% próxima compra<br>✓ Guía de uso de productos</div>
+      <div class="sc-l">Bronce</div><div class="sc-v" id="niv-b">—</div>
+      <div class="sc-s">1 compra</div>
+      <div style="margin-top:10px;font-size:12px;color:var(--gris-t);line-height:1.6">✓ Descuento 5% próxima compra<br>✓ Guía de uso de productos</div>
     </div>
   </div>
   <div class="card">
     <div class="ch">
-      <span class="ct">🥇 Clientes Oro — para contactar con beneficios VIP</span>
+      <span class="ct">🥇 Clientes por nivel</span>
       <input class="srch" type="text" placeholder="🔍 Buscar..." oninput="renderNiveles(this.value)" id="nsrch">
     </div>
     <div class="tw"><table>
@@ -288,123 +388,66 @@
 </main>
 
 <script>
-let clientes=[], filtroActual='todos', clienteModal=null;
-const enviados=JSON.parse(localStorage.getItem('labs_enviados')||'[]');
-const historial=JSON.parse(localStorage.getItem('labs_historial')||'[]');
+let clientes = [], filtroActual = 'todos', clienteModal = null;
+window._historial = [];
 
-// Al cargar la página, restaurar clientes guardados
-window.addEventListener('DOMContentLoaded', ()=>{
-  const saved = localStorage.getItem('labs_clientes');
-  if(saved){
-    try{
-      clientes = JSON.parse(saved);
-      updateStats(); renderPanel(); renderReactivar(); renderNiveles(''); renderHistorial();
-      document.getElementById('bnav-c').textContent = clientes.length;
-      document.getElementById('bnav-d').textContent = clientes.filter(c=>c.dias>90).length;
-      document.getElementById('bnav-h').textContent = historial.length;
-      // Mostrar aviso de cuándo fue la última importación
-      const lastImport = localStorage.getItem('labs_last_import');
-      if(lastImport){
-        showS('✅ Datos cargados automáticamente — última importación: <strong>'+lastImport+'</strong>. Podés importar un CSV nuevo cuando quieras.','ok');
-      }
-    } catch(e){ localStorage.removeItem('labs_clientes'); }
-  }
-});
+function setStatus(tipo, msg) {
+  const bar = document.getElementById('syncBar');
+  bar.className = 'sync-bar sync-' + tipo;
+  bar.innerHTML = msg;
+  bar.style.display = 'block';
+}
 
-// DRAG DROP
 function dov(e){e.preventDefault();document.getElementById('dropZone').classList.add('over')}
 function dol(){document.getElementById('dropZone').classList.remove('over')}
 function ddr(e){e.preventDefault();dol();loadCSV(e.dataTransfer.files[0])}
 
-function showS(msg,t){const el=document.getElementById('sbox');el.className='sbox s'+t;el.innerHTML=msg;el.style.display='block'}
-
-function loadCSV(file){
-  if(!file)return;
-  if(!file.name.endsWith('.csv')){showS('❌ El archivo debe ser un CSV de Tienda Nube.','err');return}
-  showS('⏳ Procesando '+file.name+'...','inf');
-  Papa.parse(file,{header:true,encoding:'latin1',skipEmptyLines:true,
-    complete:function(r){
-      try{processData(r.data);showS('✅ <strong>'+file.name+'</strong> importado — '+r.data.length.toLocaleString('es-AR')+' filas. ¡Listo!','ok');showPrev(r.data.slice(0,5))}
-      catch(e){showS('❌ Error. Verificá que sea el CSV de Tienda Nube.','err')}
-    },error:function(){showS('❌ No se pudo leer el archivo.','err')}
+function loadCSV(file) {
+  if(!file) return;
+  if(!file.name.endsWith('.csv')){ setStatus('err','❌ El archivo debe ser un CSV de Tienda Nube.'); return; }
+  setStatus('sync','⏳ Procesando ' + file.name + '...');
+  Papa.parse(file, {
+    header: true, encoding: 'latin1', skipEmptyLines: true,
+    complete: function(r) {
+      try {
+        processData(r.data);
+        const ahora = new Date().toLocaleDateString('es-AR') + ' ' + new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+        if(window.guardarEnFirebase) window.guardarEnFirebase(clientes, ahora);
+        showPrev(r.data.slice(0,5));
+      } catch(e) { setStatus('err','❌ Error al procesar. Verificá que sea el CSV de Tienda Nube.'); console.error(e); }
+    },
+    error: function(){ setStatus('err','❌ No se pudo leer el archivo.'); }
   });
 }
 
-function showPrev(rows){
-  const cols=['Número de orden','Nombre del comprador','Fecha','Total','Estado de la orden'];
-  document.getElementById('ph').innerHTML='<tr>'+cols.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
-  document.getElementById('pb').innerHTML=rows.map(r=>'<tr>'+cols.map(c=>'<td>'+(r[c]||'—')+'</td>').join('')+'</tr>').join('');
-  document.getElementById('pbox').style.display='block';
+function showPrev(rows) {
+  const cols = ['Número de orden','Nombre del comprador','Fecha','Total','Estado de la orden'];
+  document.getElementById('ph').innerHTML = '<tr>' + cols.map(c=>'<th>'+c+'</th>').join('') + '</tr>';
+  document.getElementById('pb').innerHTML = rows.map(r=>'<tr>'+cols.map(c=>'<td>'+(r[c]||'—')+'</td>').join('')+'</tr>').join('');
+  document.getElementById('pbox').style.display = 'block';
 }
 
-function parseDate(s){if(!s)return null;try{const p=s.trim().split(' ')[0].split('/');return new Date(p[2],p[1]-1,p[0])}catch(e){return null}}
-function fixTel(t){if(!t)return '';const n=t.toString().replace(/\D/g,'');return n.length>6?n:''}
-function fmt(n){return '$'+Math.round(n).toLocaleString('es-AR')}
-function acP(p){return p.replace(/\s*\(.*?\)\s*/g,'').replace(/\s*-\s*.*/,'').trim()}
+function parseDate(s){ if(!s) return null; try{ const p=s.trim().split(' ')[0].split('/'); return new Date(p[2],p[1]-1,p[0]); } catch(e){ return null; } }
+function fixTel(t){ if(!t) return ''; const n=t.toString().replace(/\D/g,''); return n.length>6?n:''; }
+function fmt(n){ return '$'+Math.round(n).toLocaleString('es-AR'); }
+function acP(p){ return p.replace(/\s*\(.*?\)\s*/g,'').replace(/\s*-\s*.*/,'').trim(); }
+function nivel(c){ if(c.Cantidad_compras>=5)return 'oro'; if(c.Cantidad_compras>=2)return 'plata'; if(c.Cantidad_compras>=1)return 'bronce'; return 'nuevo'; }
+function nivelBadge(c){ const n=nivel(c); if(n==='oro')return '<span class="nivel-oro">🥇 Oro</span>'; if(n==='plata')return '<span class="nivel-plata">🥈 Plata</span>'; if(n==='bronce')return '<span class="nivel-bronce">🥉 Bronce</span>'; return '<span class="nivel-nuevo">🆕 Nuevo</span>'; }
 
-function nivel(c){
-  if(c.Cantidad_compras>=5)return 'oro';
-  if(c.Cantidad_compras>=2)return 'plata';
-  if(c.Cantidad_compras>=1)return 'bronce';
-  return 'nuevo';
-}
-
-function nivelBadge(c){
-  const n=nivel(c);
-  if(n==='oro')return '<span class="nivel-oro">🥇 Oro</span>';
-  if(n==='plata')return '<span class="nivel-plata">🥈 Plata</span>';
-  if(n==='bronce')return '<span class="nivel-bronce">🥉 Bronce</span>';
-  return '<span class="nivel-nuevo">🆕 Nuevo</span>';
-}
-
-function processData(rows){
-  const seen=new Set();
-  const orders=rows.filter(r=>{const k=r['Número de orden'];if(!k||seen.has(k))return false;seen.add(k);return true})
+function processData(rows) {
+  const seen = new Set();
+  const orders = rows.filter(r=>{ const k=r['Número de orden']; if(!k||seen.has(k))return false; seen.add(k); return true; })
     .filter(r=>r['Nombre del comprador']&&r['Nombre del comprador']!=='No informado');
-
-  const prodMap={},comprasMap={};
-  rows.filter(r=>r['Email']&&r['Nombre del producto']).forEach(r=>{
-    if(!prodMap[r['Email']])prodMap[r['Email']]=new Set();
-    prodMap[r['Email']].add(r['Nombre del producto']);
-  });
-
-  // Map orders per client for history
-  orders.forEach(r=>{
-    const email=r['Email']||r['Nombre del comprador'];
-    if(!comprasMap[email])comprasMap[email]=[];
-    comprasMap[email].push({orden:r['Número de orden'],fecha:r['Fecha']||'',total:parseFloat((r['Total']||'0').replace(',','.'))||0,estado:r['Estado de la orden']||''});
-  });
-
-  const map={};
-  orders.forEach(r=>{
-    const email=r['Email']||r['Nombre del comprador'];
-    if(!map[email])map[email]={Nombre:r['Nombre del comprador'],Email:email,Telefono:fixTel(r['Teléfono']),Total_gastado:0,Cantidad_compras:0,Ultima_compra_str:r['Fecha']||'',Ultima_compra_dt:parseDate(r['Fecha']),Ciudad:r['Ciudad']||'',Provincia:r['Provincia o estado']||''};
-    const total=parseFloat((r['Total']||'0').replace(',','.'));
-    if(!isNaN(total))map[email].Total_gastado+=total;
-    map[email].Cantidad_compras++;
-    const dt=parseDate(r['Fecha']);
-    if(dt&&(!map[email].Ultima_compra_dt||dt>map[email].Ultima_compra_dt)){map[email].Ultima_compra_dt=dt;map[email].Ultima_compra_str=r['Fecha']?r['Fecha'].substring(0,10):''}
-  });
-
-  const hoy=new Date();
-  clientes=Object.values(map).map(c=>{
-    const dias=c.Ultima_compra_dt?Math.floor((hoy-c.Ultima_compra_dt)/(1000*60*60*24)):999;
-    const prods=prodMap[c.Email]?[...prodMap[c.Email]].slice(0,3):[];
-    const compras=comprasMap[c.Email]||[];
-    return{...c,dias,Productos:prods,Compras_detalle:compras,Total_gastado:Math.round(c.Total_gastado)};
-  }).sort((a,b)=>b.Total_gastado-a.Total_gastado);
-
-  // Guardar clientes para que persistan al cerrar la pagina
-  try{
-    localStorage.setItem('labs_clientes', JSON.stringify(clientes));
-    const ahora=new Date().toLocaleDateString('es-AR')+' '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
-    localStorage.setItem('labs_last_import', ahora);
-  } catch(e){ console.warn('localStorage lleno'); }
-
-  updateStats();renderPanel();renderReactivar();renderNiveles('');renderHistorial();
-  document.getElementById('bnav-c').textContent=clientes.length;
-  document.getElementById('bnav-d').textContent=clientes.filter(c=>c.dias>90).length;
-  document.getElementById('bnav-h').textContent=historial.length;
+  const prodMap = {}, comprasMap = {};
+  rows.filter(r=>r['Email']&&r['Nombre del producto']).forEach(r=>{ if(!prodMap[r['Email']])prodMap[r['Email']]=new Set(); prodMap[r['Email']].add(r['Nombre del producto']); });
+  orders.forEach(r=>{ const email=r['Email']||r['Nombre del comprador']; if(!comprasMap[email])comprasMap[email]=[]; comprasMap[email].push({orden:r['Número de orden'],fecha:r['Fecha']||'',total:parseFloat((r['Total']||'0').replace(',','.'))||0,estado:r['Estado de la orden']||''}); });
+  const map = {};
+  orders.forEach(r=>{ const email=r['Email']||r['Nombre del comprador']; if(!map[email])map[email]={Nombre:r['Nombre del comprador'],Email:email,Telefono:fixTel(r['Teléfono']),Total_gastado:0,Cantidad_compras:0,Ultima_compra_str:r['Fecha']||'',Ultima_compra_dt:parseDate(r['Fecha']),Ciudad:r['Ciudad']||'',Provincia:r['Provincia o estado']||''}; const total=parseFloat((r['Total']||'0').replace(',','.')); if(!isNaN(total))map[email].Total_gastado+=total; map[email].Cantidad_compras++; const dt=parseDate(r['Fecha']); if(dt&&(!map[email].Ultima_compra_dt||dt>map[email].Ultima_compra_dt)){map[email].Ultima_compra_dt=dt;map[email].Ultima_compra_str=r['Fecha']?r['Fecha'].substring(0,10):'';} });
+  const hoy = new Date();
+  clientes = Object.values(map).map(c=>{ const dias=c.Ultima_compra_dt?Math.floor((hoy-c.Ultima_compra_dt)/(1000*60*60*24)):999; const prods=prodMap[c.Email]?[...prodMap[c.Email]].slice(0,3):[]; const comp=comprasMap[c.Email]||[]; return{...c,dias,Productos:prods,Compras_detalle:comp,Total_gastado:Math.round(c.Total_gastado)}; }).sort((a,b)=>b.Total_gastado-a.Total_gastado);
+  updateStats(); renderPanel(); renderReactivar(); renderNiveles('');
+  document.getElementById('bnav-c').textContent = clientes.length;
+  document.getElementById('bnav-d').textContent = clientes.filter(c=>c.dias>90).length;
 }
 
 function updateStats(){
@@ -419,29 +462,19 @@ function updateStats(){
   document.getElementById('niv-b').textContent=clientes.filter(c=>nivel(c)==='bronce').length+' clientes';
 }
 
-function setF(t,btn){filtroActual=t;document.querySelectorAll('.flt').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderPanel()}
-
-function rankEl(i){
-  if(i===0)return '<span class="rank rg">1</span>';
-  if(i===1)return '<span class="rank rs">2</span>';
-  if(i===2)return '<span class="rank rb">3</span>';
-  return '<span class="rank">'+(i+1)+'</span>';
-}
+function setF(t,btn){ filtroActual=t; document.querySelectorAll('.flt').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderPanel(); }
+function rankEl(i){ if(i===0)return '<span class="rank rg">1</span>'; if(i===1)return '<span class="rank rs">2</span>'; if(i===2)return '<span class="rank rb">3</span>'; return '<span class="rank">'+(i+1)+'</span>'; }
 
 function genMsg(c){
   const nombre=c.Nombre.split(' ')[0];
-  const p1=c.Productos[0]?acP(c.Productos[0]):'nuestros productos';
-  const p2=c.Productos[1]?acP(c.Productos[1]):null;
+  const p1=c.Productos&&c.Productos[0]?acP(c.Productos[0]):'nuestros productos';
+  const p2=c.Productos&&c.Productos[1]?acP(c.Productos[1]):null;
   const nv=nivel(c);
-  if(nv==='oro')
-    return `Hola ${nombre}! 👋\n\nSos cliente Oro de Labs Nutrition 🥇 — eso significa que sos parte de nuestros clientes más especiales.\n\nComo miembro VIP tenés: envío gratis, 15% de descuento y acceso anticipado a novedades.\n\n¿Necesitás reponer ${p1}${p2?' o '+p2:''}? Escribinos y te armamos el pedido con todos tus beneficios 🚀\n\nSaludos, equipo Labs Nutrition 💚`;
-  if(c.dias>365)
-    return `Hola ${nombre}! 👋\n\nHace más de un año que no sabemos nada de vos y te extrañamos como cliente.\n\nRecordamos que probaste ${p1}${p2?' y '+p2:''} — ¿cómo te fue?\n\nTe dejamos un 10% de descuento exclusivo para que vuelvas: VUELVE10 🎁\n\nSaludos, equipo Labs Nutrition 💚`;
-  if(c.Cantidad_compras>=5)
-    return `Hola ${nombre}! 💪\n\nSos uno de nuestros clientes más fieles con ${c.Cantidad_compras} compras.\n\n¿Necesitás reponer ${p1}? Por ser cliente frecuente tenés envío gratis en tu próxima compra.\n\nEscribinos 🚀 Saludos, Labs Nutrition 💚`;
-  if(c.dias>180)
-    return `Hola ${nombre}! 👋\n\nHace varios meses que no comprás. ¿Todo bien con ${p1}?\n\nTenemos novedades que te pueden interesar. Estamos acá 💊\n\nSaludos, Labs Nutrition 💚`;
-  return `Hola ${nombre}! Te escribimos desde Labs Nutrition 🌿\n\n¿Cómo estás? Notamos que hace un tiempo que no comprás. ¿Todo bien con ${p1}?\n\nEstamos para ayudarte. Saludos del equipo! 💚`;
+  if(nv==='oro') return `Hola ${nombre}! 👋\n\nSos cliente Oro de Labs Nutrition 🥇 — eso te hace parte de nuestros clientes más especiales.\n\nComo miembro VIP tenés: envío gratis, 15% de descuento y acceso anticipado a novedades.\n\n¿Necesitás reponer ${p1}${p2?' o '+p2:''}? Escribinos con tus beneficios 🚀\n\nSaludos, equipo Labs Nutrition 💚`;
+  if(c.dias>365) return `Hola ${nombre}! 👋\n\nHace más de un año que no sabemos nada de vos y te extrañamos.\n\nRecordamos que probaste ${p1}${p2?' y '+p2:''} — ¿cómo te fue?\n\nTe dejamos un 10% de descuento para que vuelvas: VUELVE10 🎁\n\nSaludos, Labs Nutrition 💚`;
+  if(c.Cantidad_compras>=5) return `Hola ${nombre}! 💪\n\nSos uno de nuestros clientes más fieles con ${c.Cantidad_compras} compras.\n\n¿Necesitás reponer ${p1}? Tenés envío gratis en tu próxima compra.\n\nEscribinos 🚀 Saludos, Labs Nutrition 💚`;
+  if(c.dias>180) return `Hola ${nombre}! 👋\n\nHace varios meses que no comprás. ¿Todo bien con ${p1}?\n\nTenemos novedades que te pueden interesar. Estamos acá 💊\n\nSaludos, Labs Nutrition 💚`;
+  return `Hola ${nombre}! Te escribimos desde Labs Nutrition 🌿\n\n¿Cómo estás? Hace un tiempo que no comprás. ¿Todo bien con ${p1}?\n\nEstamos para ayudarte. Saludos del equipo! 💚`;
 }
 
 function renderPanel(){
@@ -454,24 +487,11 @@ function renderPanel(){
   if(q)data=data.filter(c=>c.Nombre.toLowerCase().includes(q)||c.Email.toLowerCase().includes(q));
   const pb=document.getElementById('pbody');
   if(!data.length){pb.innerHTML='<tr><td colspan="8" class="empty">No hay resultados.</td></tr>';return}
+  const hist=window._historial||[];
   pb.innerHTML=data.map((c,i)=>{
-    const yaEnv=enviados.some(e=>e.email===c.Email);
-    const eS=c.Email.replace(/'/g,"\\'").replace(/"/g,'&quot;');
-    return`<tr>
-      <td>${rankEl(i)}</td>
-      <td><div style="font-weight:600;max-width:150px" class="trunc">${c.Nombre}</div><div style="font-size:11px;color:#94a3b8;max-width:150px" class="trunc">${c.Email}</div></td>
-      <td>${nivelBadge(c)}</td>
-      <td style="font-weight:600">${fmt(c.Total_gastado)}</td>
-      <td><span class="badge bb">${c.Cantidad_compras}</span></td>
-      <td style="font-size:12px;color:var(--gris-t)">${c.Ultima_compra_str||'—'}</td>
-      <td style="font-size:12px;color:var(--gris-t);max-width:100px" class="trunc">${c.Ciudad||'—'}</td>
-      <td><div class="bg">
-        <button class="btn-msg" onclick="aModal('${eS}')">✉️</button>
-        ${c.Telefono?`<a class="btn-wa" href="https://wa.me/${c.Telefono}" target="_blank" onclick="regEnv('${eS}',null,'${c.Telefono}')">💬</a>`:''}
-        <button class="btn-hist" onclick="aHist('${eS}')">📋</button>
-        ${yaEnv?'<span class="env-tag">✓</span>':''}
-      </div></td>
-    </tr>`;
+    const yaEnv=hist.some(h=>h.email===c.Email);
+    const eS=encodeURIComponent(c.Email);
+    return`<tr><td>${rankEl(i)}</td><td><div style="font-weight:600;max-width:150px" class="trunc">${c.Nombre}</div><div style="font-size:11px;color:#94a3b8;max-width:150px" class="trunc">${c.Email}</div></td><td>${nivelBadge(c)}</td><td style="font-weight:600">${fmt(c.Total_gastado)}</td><td><span class="badge bb">${c.Cantidad_compras}</span></td><td style="font-size:12px;color:var(--gris-t)">${c.Ultima_compra_str||'—'}</td><td style="font-size:12px;color:var(--gris-t);max-width:100px" class="trunc">${c.Ciudad||'—'}</td><td><div class="bg"><button class="btn-msg" onclick="aModal('${eS}')">✉️</button>${c.Telefono?`<a class="btn-wa" href="https://wa.me/${c.Telefono}" target="_blank" onclick="regEnv('${eS}',null,'${c.Telefono}')">💬</a>`:''}<button class="btn-hist" onclick="aHist('${eS}')">📋</button>${yaEnv?'<span class="env-tag">✓</span>':''}</div></td></tr>`;
   }).join('');
 }
 
@@ -479,77 +499,56 @@ function renderReactivar(){
   const dormidos=clientes.filter(c=>c.dias>90).sort((a,b)=>b.Total_gastado-a.Total_gastado);
   const rc=document.getElementById('rcards');
   if(!dormidos.length){rc.innerHTML='<div class="empty">🎉 No hay clientes dormidos!</div>';return}
+  const hist=window._historial||[];
   rc.innerHTML=dormidos.map((c,i)=>{
     const msg=genMsg(c);
-    const yaEnv=enviados.some(e=>e.email===c.Email);
-    const db=c.dias>365?'br':c.dias>180?'ba':'bb';
-    const eS=c.Email.replace(/'/g,"\\'").replace(/"/g,'&quot;');
-    const mS=msg.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,'\\n');
-    return`<div class="rc">
-      <div class="rc-name">${c.Nombre} ${nivelBadge(c)} ${yaEnv?'<span class="env-tag">✓ enviado</span>':''}</div>
-      <div class="rc-meta">
-        <span class="badge ${db}">${c.dias} días sin comprar</span>
-        <span>${fmt(c.Total_gastado)} gastado</span>
-        <span>${c.Cantidad_compras} compras</span>
-        ${c.Productos.length?'<span style="color:#94a3b8">'+c.Productos.map(p=>acP(p)).join(', ')+'</span>':''}
-      </div>
-      <div class="msgprev" id="mp${i}">${msg}</div>
-      <span class="ver-mas" onclick="toggleMsg(${i})">▼ ver completo</span>
-      <div class="bg">
-        <button class="btn-msg" onclick="aModal('${eS}','${mS}')">✏️ Editar y enviar</button>
-        ${c.Telefono?`<a class="btn-wa" href="https://wa.me/${c.Telefono}?text=${encodeURIComponent(msg)}" target="_blank" onclick="regEnv('${eS}',null,'${c.Telefono}')">💬 Enviar directo</a>`:'<span style="font-size:12px;color:#94a3b8">Sin teléfono</span>'}
-        <button class="btn-hist" onclick="aHist('${eS}')">📋 Ver historial</button>
-      </div>
-    </div>`;
+    const yaEnv=hist.some(h=>h.email===c.Email);
+    const db=c.dias>365?'br2':c.dias>180?'ba':'bb';
+    const eS=encodeURIComponent(c.Email);
+    const mS=encodeURIComponent(msg);
+    return`<div class="rc"><div class="rc-name">${c.Nombre} ${nivelBadge(c)} ${yaEnv?'<span class="env-tag">✓ enviado</span>':''}</div><div class="rc-meta"><span class="badge ${db}">${c.dias} días sin comprar</span><span>${fmt(c.Total_gastado)} gastado</span><span>${c.Cantidad_compras} compras</span>${c.Productos&&c.Productos.length?'<span style="color:#94a3b8">'+c.Productos.map(p=>acP(p)).join(', ')+'</span>':''}</div><div class="msgprev" id="mp${i}">${msg}</div><span class="ver-mas" onclick="toggleMsg(${i})">▼ ver completo</span><div class="bg"><button class="btn-msg" onclick="aModalMsg('${eS}','${mS}')">✏️ Editar y enviar</button>${c.Telefono?`<a class="btn-wa" href="https://wa.me/${c.Telefono}?text=${encodeURIComponent(msg)}" target="_blank" onclick="regEnv('${eS}',null,'${c.Telefono}')">💬 Enviar directo</a>`:'<span style="font-size:12px;color:#94a3b8">Sin teléfono</span>'}<button class="btn-hist" onclick="aHist('${eS}')">📋</button></div></div>`;
   }).join('');
 }
 
 function renderNiveles(q){
-  const data=q?clientes.filter(c=>c.Nombre.toLowerCase().includes(q.toLowerCase())||c.Email.toLowerCase().includes(q.toLowerCase())):clientes.filter(c=>nivel(c)==='oro');
+  const data=q?clientes.filter(c=>c.Nombre.toLowerCase().includes(q.toLowerCase())):clientes.filter(c=>nivel(c)==='oro');
   const nb=document.getElementById('nbody');
   if(!data.length){nb.innerHTML='<tr><td colspan="7" class="empty">No hay resultados.</td></tr>';return}
   nb.innerHTML=data.map((c,i)=>{
-    const eS=c.Email.replace(/'/g,"\\'").replace(/"/g,'&quot;');
-    return`<tr>
-      <td>${rankEl(i)}</td>
-      <td><div style="font-weight:600;max-width:160px" class="trunc">${c.Nombre}</div><div style="font-size:11px;color:#94a3b8;max-width:160px" class="trunc">${c.Email}</div></td>
-      <td>${nivelBadge(c)}</td>
-      <td><span class="badge bb">${c.Cantidad_compras}</span></td>
-      <td style="font-weight:600">${fmt(c.Total_gastado)}</td>
-      <td style="font-size:12px;color:var(--gris-t)">${c.Ultima_compra_str||'—'}</td>
-      <td><div class="bg">
-        <button class="btn-msg" onclick="aModal('${eS}')">✉️ Mensaje VIP</button>
-        ${c.Telefono?`<a class="btn-wa" href="https://wa.me/${c.Telefono}" target="_blank" onclick="regEnv('${eS}',null,'${c.Telefono}')">💬</a>`:''}
-      </div></td>
-    </tr>`;
+    const eS=encodeURIComponent(c.Email);
+    return`<tr><td>${rankEl(i)}</td><td><div style="font-weight:600;max-width:160px" class="trunc">${c.Nombre}</div><div style="font-size:11px;color:#94a3b8;max-width:160px" class="trunc">${c.Email}</div></td><td>${nivelBadge(c)}</td><td><span class="badge bb">${c.Cantidad_compras}</span></td><td style="font-weight:600">${fmt(c.Total_gastado)}</td><td style="font-size:12px;color:var(--gris-t)">${c.Ultima_compra_str||'—'}</td><td><div class="bg"><button class="btn-msg" onclick="aModal('${eS}')">✉️ Mensaje</button>${c.Telefono?`<a class="btn-wa" href="https://wa.me/${c.Telefono}" target="_blank" onclick="regEnv('${eS}',null,'${c.Telefono}')">💬</a>`:''}</div></td></tr>`;
   }).join('');
 }
 
 function renderHistorial(){
+  const hist=window._historial||[];
+  document.getElementById('hs-env').textContent=hist.length;
+  if(hist.length) document.getElementById('hs-ult').textContent=hist[0].fecha||'—';
+  document.getElementById('bnav-h').textContent=hist.length;
   const hb=document.getElementById('hbody');
-  document.getElementById('hs-env').textContent=historial.length;
-  if(historial.length){
-    const ult=historial[historial.length-1];
-    document.getElementById('hs-ult').textContent=ult.fecha||'—';
-  }
-  document.getElementById('bnav-h').textContent=historial.length;
-  if(!historial.length){hb.innerHTML='<tr><td colspan="4" class="empty">Todavía no enviaste ningún mensaje desde este sistema.</td></tr>';return}
-  hb.innerHTML=[...historial].reverse().map(h=>`<tr>
-    <td style="font-size:12px;white-space:nowrap">${h.fecha||'—'}</td>
-    <td style="font-weight:600">${h.nombre||'—'}</td>
-    <td style="font-size:12px;color:var(--gris-t)">${h.tel?'+'+h.tel:'—'}</td>
-    <td style="font-size:12px;color:var(--gris-t);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(h.msg||'').split('\n')[0]}...</td>
-  </tr>`).join('');
+  if(!hist.length){hb.innerHTML='<tr><td colspan="4" class="empty">Todavía no enviaste ningún mensaje.</td></tr>';return}
+  hb.innerHTML=hist.map(h=>`<tr><td style="font-size:12px;white-space:nowrap">${h.fecha||'—'}</td><td style="font-weight:600">${h.nombre||'—'}</td><td style="font-size:12px;color:var(--gris-t)">${h.tel?'+'+h.tel:'—'}</td><td style="font-size:12px;color:var(--gris-t);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(h.msg||'').split('\n')[0]}...</td></tr>`).join('');
 }
 
-// MODAL MENSAJE
-function aModal(email,msgParam){
-  clienteModal=clientes.find(x=>x.Email===email)||clientes.find(x=>x.Email.replace(/'/g,"\\'")===email);
+function getClienteByEmail(emailEncoded){
+  const email=decodeURIComponent(emailEncoded);
+  return clientes.find(x=>x.Email===email);
+}
+
+function aModal(emailEncoded){
+  clienteModal=getClienteByEmail(emailEncoded);
   if(!clienteModal)return;
-  const msg=msgParam?msgParam.replace(/\\n/g,'\n'):genMsg(clienteModal);
-  document.getElementById('minfo').innerHTML=
-    '<strong>'+clienteModal.Nombre+'</strong> · '+fmt(clienteModal.Total_gastado)+' gastado · '+clienteModal.Cantidad_compras+' compra'+(clienteModal.Cantidad_compras>1?'s':'')+' · '+nivelBadge(clienteModal)+
-    (clienteModal.Telefono?' · <span style="color:var(--verde)">📱 +'+clienteModal.Telefono+'</span>':' · <span style="color:var(--rojo-t)">Sin teléfono</span>');
+  openModal(clienteModal,genMsg(clienteModal));
+}
+
+function aModalMsg(emailEncoded,msgEncoded){
+  clienteModal=getClienteByEmail(emailEncoded);
+  if(!clienteModal)return;
+  openModal(clienteModal,decodeURIComponent(msgEncoded));
+}
+
+function openModal(c,msg){
+  document.getElementById('minfo').innerHTML='<strong>'+c.Nombre+'</strong> · '+fmt(c.Total_gastado)+' gastado · '+c.Cantidad_compras+' compra'+(c.Cantidad_compras>1?'s':'')+' · '+nivelBadge(c)+(c.Telefono?' · <span style="color:var(--verde)">📱 +'+c.Telefono+'</span>':' · <span style="color:var(--rojo-t)">Sin teléfono</span>');
   document.getElementById('mtxt').value=msg;
   document.getElementById('bcopy').textContent='📋 Copiar';
   document.getElementById('bcopy').classList.remove('ok');
@@ -561,12 +560,9 @@ function cModal(){document.getElementById('modalMsg').classList.remove('open');c
 function enviarWA(){
   if(!clienteModal)return;
   const msg=document.getElementById('mtxt').value;
-  regEnv(clienteModal.Email,msg,clienteModal.Telefono);
-  if(!clienteModal.Telefono){
-    navigator.clipboard.writeText(msg);
-    alert('Sin teléfono registrado. El mensaje fue copiado — buscalo en WhatsApp manualmente.');
-    cModal();return;
-  }
+  const eS=encodeURIComponent(clienteModal.Email);
+  regEnv(eS,msg,clienteModal.Telefono);
+  if(!clienteModal.Telefono){ navigator.clipboard.writeText(msg); alert('Sin teléfono. Mensaje copiado — buscalo en WhatsApp manualmente.'); cModal(); return; }
   window.open('https://wa.me/'+clienteModal.Telefono+'?text='+encodeURIComponent(msg),'_blank');
   cModal();
 }
@@ -579,60 +575,38 @@ function copiarModal(){
   });
 }
 
-function regEnv(email,msg,tel){
-  const c=clientes.find(x=>x.Email===email)||clientes.find(x=>x.Email.replace(/'/g,"\\'")===email);
+function regEnv(emailEncoded,msg,tel){
+  const email=decodeURIComponent(emailEncoded);
+  const c=clientes.find(x=>x.Email===email);
   if(!c)return;
-  // Avoid duplicate in enviados
-  if(!enviados.some(e=>e.email===email)) enviados.push({email:email});
-  // Add to historial
   const ahora=new Date();
   const fecha=ahora.toLocaleDateString('es-AR')+' '+ahora.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
-  historial.push({email:email,nombre:c?c.Nombre:email,tel:tel||'',fecha:fecha,msg:msg||genMsg(c)});
-  localStorage.setItem('labs_enviados',JSON.stringify(enviados));
-  localStorage.setItem('labs_historial',JSON.stringify(historial));
-  renderPanel();renderReactivar();renderHistorial();
+  const msgData={email:email,nombre:c.Nombre,tel:tel||'',fecha:fecha,msg:msg||genMsg(c)};
+  if(window.guardarMensaje) window.guardarMensaje(msgData);
 }
 
-// MODAL HISTORIAL CLIENTE
-function aHist(email){
-  const c=clientes.find(x=>x.Email===email)||clientes.find(x=>x.Email.replace(/'/g,"\\'")===email);
+function aHist(emailEncoded){
+  const email=decodeURIComponent(emailEncoded);
+  const c=clientes.find(x=>x.Email===email);
   if(!c)return;
-  document.getElementById('mh-title').textContent='📋 '+c.Nombre+' — historial completo';
-  const msgs=historial.filter(h=>h.email===email);
+  document.getElementById('mh-title').textContent='📋 '+c.Nombre;
+  const hist=window._historial||[];
+  const msgs=hist.filter(h=>h.email===email);
   const compras=c.Compras_detalle||[];
-  let html='';
-  // Mensajes
-  html+='<div class="hist-sec"><div class="hist-title">✉️ Mensajes enviados ('+msgs.length+')</div>';
+  let html='<div class="hist-sec"><div class="hist-title">✉️ Mensajes enviados ('+msgs.length+')</div>';
   if(!msgs.length) html+='<div class="empty-hist">No le enviaste mensajes todavía.</div>';
-  else html+=[...msgs].reverse().map(m=>`<div class="hist-item">
-    <div class="hist-item-top"><strong>Mensaje enviado</strong><span class="hist-date">${m.fecha}</span></div>
-    <p>${(m.msg||'').substring(0,120)}${(m.msg||'').length>120?'...':''}</p>
-  </div>`).join('');
-  html+='</div>';
-  // Compras
-  html+='<div class="hist-sec"><div class="hist-title">🛒 Compras ('+compras.length+')</div>';
+  else html+=msgs.map(m=>`<div class="hist-item"><div class="hist-item-top"><strong>Mensaje enviado</strong><span class="hist-date">${m.fecha}</span></div><p>${(m.msg||'').substring(0,120)}${(m.msg||'').length>120?'...':''}</p></div>`).join('');
+  html+='</div><div class="hist-sec"><div class="hist-title">🛒 Compras ('+compras.length+')</div>';
   if(!compras.length) html+='<div class="empty-hist">Sin compras registradas.</div>';
-  else html+=[...compras].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).map(comp=>`<div class="hist-item">
-    <div class="hist-item-top"><strong>Orden #${comp.orden}</strong><span class="hist-date">${comp.fecha?comp.fecha.substring(0,10):''}</span></div>
-    <p>${fmt(comp.total)} · ${comp.estado}</p>
-  </div>`).join('');
+  else html+=compras.sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).map(comp=>`<div class="hist-item"><div class="hist-item-top"><strong>Orden #${comp.orden}</strong><span class="hist-date">${comp.fecha?comp.fecha.substring(0,10):''}</span></div><p>${fmt(comp.total)} · ${comp.estado}</p></div>`).join('');
   html+='</div>';
-  // Productos
-  if(c.Productos.length){
-    html+='<div class="hist-sec"><div class="hist-title">📦 Productos comprados</div>';
-    html+=c.Productos.map(p=>`<div class="hist-item"><p>${p}</p></div>`).join('');
-    html+='</div>';
-  }
+  if(c.Productos&&c.Productos.length){ html+='<div class="hist-sec"><div class="hist-title">📦 Productos</div>'+c.Productos.map(p=>`<div class="hist-item"><p>${p}</p></div>`).join('')+'</div>'; }
   document.getElementById('mh-body').innerHTML=html;
   document.getElementById('modalHist').classList.add('open');
 }
 function cHist(){document.getElementById('modalHist').classList.remove('open')}
 
-function toggleMsg(i){
-  const el=document.getElementById('mp'+i);
-  el.classList.toggle('exp');
-  el.nextElementSibling.textContent=el.classList.contains('exp')?'▲ cerrar':'▼ ver completo';
-}
+function toggleMsg(i){const el=document.getElementById('mp'+i);el.classList.toggle('exp');el.nextElementSibling.textContent=el.classList.contains('exp')?'▲ cerrar':'▼ ver completo';}
 
 function sw(name,btn){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
