@@ -36,17 +36,39 @@
     window.addEventListener('load', async () => {
       try {
         setStatus('sync', '🔄 Conectando con la base de datos...');
-        const snap = await getDoc(doc(db, 'datos', 'clientes'));
-        if (snap.exists()) {
-          const data = snap.data();
-          window._clientes = data.lista || [];
-          window._lastImport = data.lastImport || '';
-          if (window._clientes.length > 0) {
-            window.clientes = window._clientes;
+
+        // Leer metadata primero
+        const metaSnap = await getDoc(doc(db, 'datos', 'meta'));
+        if (metaSnap.exists()) {
+          const meta = metaSnap.data();
+          window._lastImport = meta.lastImport || '';
+          const totalChunks = meta.totalChunks || 0;
+
+          // Cargar todos los chunks
+          let todosClientes = [];
+          for(let i = 0; i < totalChunks; i++) {
+            const chunkSnap = await getDoc(doc(db, 'datos', 'chunk_' + i));
+            if(chunkSnap.exists()) {
+              const lista = chunkSnap.data().lista || [];
+              // Reconstruir formato completo desde formato comprimido
+              const reconstruidos = lista.map(c => ({
+                Nombre: c.N, Email: c.E, Telefono: c.T || '',
+                Total_gastado: c.V, Cantidad_compras: c.C,
+                Ultima_compra_str: c.U || '', Ciudad: c.CI || '',
+                Provincia: '', dias: c.D, Productos: c.P || [],
+                Compras_detalle: []
+              }));
+              todosClientes = todosClientes.concat(reconstruidos);
+            }
+          }
+
+          if (todosClientes.length > 0) {
+            window.clientes = todosClientes;
+            clientes = todosClientes;
             updateStats(); renderPanel(); renderReactivar(); renderNiveles('');
             document.getElementById('bnav-c').textContent = clientes.length;
             document.getElementById('bnav-d').textContent = clientes.filter(c=>c.dias>90).length;
-            setStatus('ok', '✅ Datos cargados — última importación: <strong>' + window._lastImport + '</strong>');
+            setStatus('ok', '✅ ' + todosClientes.length + ' clientes cargados — última importación: <strong>' + window._lastImport + '</strong>');
           } else {
             setStatus('info', '📥 No hay datos todavía. Importá el CSV de Tienda Nube.');
           }
@@ -56,7 +78,7 @@
         // Cargar historial
         await cargarHistorial();
       } catch(e) {
-        setStatus('err', '⚠️ Error al conectar. Verificá tu conexión a internet.');
+        setStatus('err', '⚠️ Error al conectar: ' + e.message);
         console.error(e);
       }
     });
@@ -64,23 +86,35 @@
     window.guardarEnFirebase = async function(clientesData, lastImport) {
       try {
         setStatus('sync', '☁️ Guardando en la nube...');
-        // Guardar version liviana (sin compras detalle completo)
+        // Version ultra liviana: solo datos esenciales, sin compras detalle
         const liviano = clientesData.map(c => ({
-          Nombre: c.Nombre, Email: c.Email, Telefono: c.Telefono,
-          Total_gastado: c.Total_gastado, Cantidad_compras: c.Cantidad_compras,
-          Ultima_compra_str: c.Ultima_compra_str, Ciudad: c.Ciudad,
-          Provincia: c.Provincia || '', dias: c.dias,
-          Productos: c.Productos || [],
-          Compras_detalle: (c.Compras_detalle || []).slice(0, 10)
+          N: c.Nombre, E: c.Email, T: c.Telefono || '',
+          V: c.Total_gastado, C: c.Cantidad_compras,
+          U: c.Ultima_compra_str || '', CI: c.Ciudad || '',
+          D: c.dias, P: (c.Productos || []).slice(0, 2)
         }));
-        await setDoc(doc(db, 'datos', 'clientes'), {
-          lista: liviano,
+
+        // Guardar en chunks de 200 clientes para no superar el limite
+        const CHUNK = 200;
+        const totalChunks = Math.ceil(liviano.length / CHUNK);
+
+        // Guardar metadata
+        await setDoc(doc(db, 'datos', 'meta'), {
           lastImport: lastImport,
+          totalClientes: liviano.length,
+          totalChunks: totalChunks,
           updatedAt: new Date().toISOString()
         });
-        setStatus('ok', '✅ Datos guardados en la nube — PC y celular sincronizados 📱💻');
+
+        // Guardar cada chunk
+        for(let i = 0; i < totalChunks; i++) {
+          const chunk = liviano.slice(i * CHUNK, (i + 1) * CHUNK);
+          await setDoc(doc(db, 'datos', 'chunk_' + i), { lista: chunk });
+        }
+
+        setStatus('ok', '✅ ' + liviano.length + ' clientes guardados en la nube — PC y celular sincronizados 📱💻');
       } catch(e) {
-        setStatus('err', '❌ Error al guardar en la nube: ' + e.message);
+        setStatus('err', '❌ Error al guardar: ' + e.message);
         console.error(e);
       }
     };
