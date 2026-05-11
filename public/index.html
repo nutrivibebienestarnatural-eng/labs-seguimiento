@@ -292,6 +292,25 @@ let clientes=[], filtroActual='todos', clienteModal=null;
 const enviados=JSON.parse(localStorage.getItem('labs_enviados')||'[]');
 const historial=JSON.parse(localStorage.getItem('labs_historial')||'[]');
 
+// Al cargar la página, restaurar clientes guardados
+window.addEventListener('DOMContentLoaded', ()=>{
+  const saved = localStorage.getItem('labs_clientes');
+  if(saved){
+    try{
+      clientes = JSON.parse(saved);
+      updateStats(); renderPanel(); renderReactivar(); renderNiveles(''); renderHistorial();
+      document.getElementById('bnav-c').textContent = clientes.length;
+      document.getElementById('bnav-d').textContent = clientes.filter(c=>c.dias>90).length;
+      document.getElementById('bnav-h').textContent = historial.length;
+      // Mostrar aviso de cuándo fue la última importación
+      const lastImport = localStorage.getItem('labs_last_import');
+      if(lastImport){
+        showS('✅ Datos cargados automáticamente — última importación: <strong>'+lastImport+'</strong>. Podés importar un CSV nuevo cuando quieras.','ok');
+      }
+    } catch(e){ localStorage.removeItem('labs_clientes'); }
+  }
+});
+
 // DRAG DROP
 function dov(e){e.preventDefault();document.getElementById('dropZone').classList.add('over')}
 function dol(){document.getElementById('dropZone').classList.remove('over')}
@@ -374,6 +393,13 @@ function processData(rows){
     const compras=comprasMap[c.Email]||[];
     return{...c,dias,Productos:prods,Compras_detalle:compras,Total_gastado:Math.round(c.Total_gastado)};
   }).sort((a,b)=>b.Total_gastado-a.Total_gastado);
+
+  // Guardar clientes para que persistan al cerrar la pagina
+  try{
+    localStorage.setItem('labs_clientes', JSON.stringify(clientes));
+    const ahora=new Date().toLocaleDateString('es-AR')+' '+new Date().toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+    localStorage.setItem('labs_last_import', ahora);
+  } catch(e){ console.warn('localStorage lleno'); }
 
   updateStats();renderPanel();renderReactivar();renderNiveles('');renderHistorial();
   document.getElementById('bnav-c').textContent=clientes.length;
