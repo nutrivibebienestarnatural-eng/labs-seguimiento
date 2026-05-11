@@ -3,440 +3,619 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Labs Nutrition — Seguimiento de Clientes</title>
+  <title>Labs Nutrition — CRM</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <style>
     :root {
-      --verde: #16a34a;
-      --verde-claro: #dcfce7;
-      --verde-texto: #14532d;
-      --gris: #f8fafc;
-      --gris-borde: #e2e8f0;
-      --gris-texto: #64748b;
-      --texto: #0f172a;
-      --blanco: #ffffff;
-      --amber: #fef3c7;
-      --amber-texto: #92400e;
-      --rojo: #fee2e2;
-      --rojo-texto: #991b1b;
-      --azul: #dbeafe;
-      --azul-texto: #1e40af;
-      --radio: 10px;
-      --sombra: 0 1px 3px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04);
+      --verde:#16a34a;--verde-c:#dcfce7;--verde-t:#14532d;
+      --gris:#f8fafc;--borde:#e2e8f0;--gris-t:#64748b;
+      --texto:#0f172a;--blanco:#ffffff;
+      --amber:#fef3c7;--amber-t:#92400e;
+      --rojo:#fee2e2;--rojo-t:#991b1b;
+      --azul:#dbeafe;--azul-t:#1e40af;
+      --oro:#fef08a;--oro-t:#713f12;
+      --plata:#f1f5f9;--plata-t:#334155;
+      --bronce:#fed7aa;--bronce-t:#7c2d12;
+      --radio:10px;--sombra:0 1px 3px rgba(0,0,0,0.07);
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; color: var(--texto); min-height: 100vh; }
-
-    /* NAV */
-    nav { background: var(--blanco); border-bottom: 1px solid var(--gris-borde); padding: 0 1.5rem; display: flex; align-items: center; gap: 1rem; height: 56px; position: sticky; top: 0; z-index: 100; box-shadow: var(--sombra); }
-    .nav-logo { font-size: 16px; font-weight: 700; color: var(--verde); display: flex; align-items: center; gap: 8px; }
-    .nav-logo span { font-size: 20px; }
-    .nav-tabs { display: flex; gap: 2px; margin-left: auto; }
-    .nav-tab { padding: 6px 14px; border-radius: 8px; font-size: 13px; border: none; background: transparent; cursor: pointer; color: var(--gris-texto); font-weight: 500; transition: all .15s; }
-    .nav-tab:hover { background: var(--gris); color: var(--texto); }
-    .nav-tab.active { background: var(--verde-claro); color: var(--verde-texto); }
-    .badge-nav { background: var(--verde); color: white; font-size: 10px; padding: 1px 6px; border-radius: 99px; margin-left: 4px; font-weight: 600; }
-
-    /* MAIN */
-    main { max-width: 1100px; margin: 0 auto; padding: 1.5rem 1rem; }
-
-    /* PANELS */
-    .panel { display: none; }
-    .panel.active { display: block; }
-
-    /* CARDS STATS */
-    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1.5rem; }
-    @media(max-width:700px){ .stats-grid { grid-template-columns: repeat(2,1fr); } }
-    .stat-card { background: var(--blanco); border: 1px solid var(--gris-borde); border-radius: var(--radio); padding: 1rem 1.25rem; box-shadow: var(--sombra); }
-    .stat-label { font-size: 11px; color: var(--gris-texto); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 6px; }
-    .stat-value { font-size: 24px; font-weight: 700; color: var(--texto); }
-    .stat-sub { font-size: 11px; color: var(--gris-texto); margin-top: 2px; }
-
-    /* TABLE */
-    .card { background: var(--blanco); border: 1px solid var(--gris-borde); border-radius: var(--radio); box-shadow: var(--sombra); overflow: hidden; }
-    .card-header { padding: .875rem 1.25rem; border-bottom: 1px solid var(--gris-borde); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .card-title { font-size: 14px; font-weight: 600; color: var(--texto); }
-    .search-input { margin-left: auto; padding: 6px 12px; border: 1px solid var(--gris-borde); border-radius: 8px; font-size: 13px; background: var(--gris); outline: none; width: 220px; }
-    .search-input:focus { border-color: var(--verde); }
-    .table-wrap { overflow-x: auto; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th { text-align: left; padding: 10px 14px; font-size: 11px; font-weight: 600; color: var(--gris-texto); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--gris-borde); white-space: nowrap; background: var(--gris); }
-    td { padding: 10px 14px; border-bottom: 1px solid var(--gris-borde); vertical-align: middle; }
-    tr:last-child td { border-bottom: none; }
-    tr:hover td { background: #f8fafc; }
-
-    /* BADGES */
-    .badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
-    .badge-verde { background: var(--verde-claro); color: var(--verde-texto); }
-    .badge-amber { background: var(--amber); color: var(--amber-texto); }
-    .badge-rojo { background: var(--rojo); color: var(--rojo-texto); }
-    .badge-azul { background: var(--azul); color: var(--azul-texto); }
-
-    /* RANK */
-    .rank { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; background: var(--gris-borde); color: var(--gris-texto); }
-    .rank.g { background: #fef9c3; color: #854d0e; }
-    .rank.s { background: #f1f5f9; color: #475569; }
-    .rank.b { background: #fff7ed; color: #9a3412; }
-
-    /* WA BTN */
-    .wa-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 4px 10px; border-radius: 8px; border: 1px solid #22c55e; color: #16a34a; background: transparent; text-decoration: none; white-space: nowrap; cursor: pointer; font-weight: 500; }
-    .wa-btn:hover { background: var(--verde-claro); }
-
-    /* IMPORT ZONE */
-    .import-section { max-width: 640px; margin: 0 auto; }
-    .steps-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 1.5rem; }
-    @media(max-width:600px){ .steps-row { grid-template-columns: 1fr; } }
-    .step-box { background: var(--blanco); border: 1px solid var(--gris-borde); border-radius: var(--radio); padding: 1rem; text-align: center; box-shadow: var(--sombra); }
-    .step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--verde); color: white; font-size: 14px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 10px; }
-    .step-box p { font-size: 12px; color: var(--gris-texto); line-height: 1.5; }
-    .drop-zone { border: 2px dashed var(--gris-borde); border-radius: var(--radio); padding: 3rem 2rem; text-align: center; cursor: pointer; transition: all .2s; background: var(--blanco); }
-    .drop-zone:hover, .drop-zone.over { border-color: var(--verde); background: var(--verde-claro); }
-    .drop-icon { font-size: 48px; margin-bottom: 1rem; }
-    .drop-zone h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--texto); }
-    .drop-zone p { font-size: 13px; color: var(--gris-texto); }
-    .file-input { display: none; }
-    .status-box { margin-top: 1rem; padding: 12px 16px; border-radius: var(--radio); font-size: 13px; display: none; font-weight: 500; }
-    .status-ok { background: var(--verde-claro); color: var(--verde-texto); border: 1px solid #86efac; }
-    .status-err { background: var(--rojo); color: var(--rojo-texto); border: 1px solid #fca5a5; }
-    .status-info { background: var(--azul); color: var(--azul-texto); border: 1px solid #93c5fd; }
-    .preview-box { margin-top: 1.5rem; display: none; }
-    .preview-box h4 { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
-
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f1f5f9;color:var(--texto);min-height:100vh}
+    nav{background:var(--blanco);border-bottom:1px solid var(--borde);padding:0 1.5rem;display:flex;align-items:center;gap:.5rem;height:56px;position:sticky;top:0;z-index:100;box-shadow:var(--sombra);flex-wrap:wrap}
+    .logo{font-size:15px;font-weight:700;color:var(--verde);margin-right:.5rem}
+    .nav-tab{padding:5px 11px;border-radius:8px;font-size:12px;border:none;background:transparent;cursor:pointer;color:var(--gris-t);font-weight:500;white-space:nowrap}
+    .nav-tab:hover{background:var(--gris)}
+    .nav-tab.active{background:var(--verde-c);color:var(--verde-t)}
+    .bnav{background:var(--verde);color:white;font-size:10px;padding:1px 5px;border-radius:99px;margin-left:3px;font-weight:700}
+    main{max-width:1150px;margin:0 auto;padding:1.5rem 1rem}
+    .panel{display:none}.panel.active{display:block}
+    .stats-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:1.5rem}
+    @media(max-width:800px){.stats-grid{grid-template-columns:repeat(2,1fr)}}
+    .sc{background:var(--blanco);border:1px solid var(--borde);border-radius:var(--radio);padding:.875rem 1rem;box-shadow:var(--sombra)}
+    .sc-l{font-size:11px;color:var(--gris-t);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+    .sc-v{font-size:22px;font-weight:700;color:var(--texto)}
+    .sc-s{font-size:11px;color:var(--gris-t);margin-top:2px}
+    .card{background:var(--blanco);border:1px solid var(--borde);border-radius:var(--radio);box-shadow:var(--sombra);overflow:hidden}
+    .ch{padding:.875rem 1.25rem;border-bottom:1px solid var(--borde);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .ct{font-size:14px;font-weight:600}
+    .srch{padding:6px 12px;border:1px solid var(--borde);border-radius:8px;font-size:13px;background:var(--gris);outline:none;width:200px}
+    .srch:focus{border-color:var(--verde)}
+    .tw{overflow-x:auto}
+    table{width:100%;border-collapse:collapse;font-size:13px}
+    th{text-align:left;padding:9px 12px;font-size:11px;font-weight:600;color:var(--gris-t);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--borde);white-space:nowrap;background:var(--gris)}
+    td{padding:8px 12px;border-bottom:1px solid var(--borde);vertical-align:middle}
+    tr:last-child td{border-bottom:none}
+    tr:hover td{background:#f8fafc}
+    .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:99px;font-weight:600}
+    .bv{background:var(--verde-c);color:var(--verde-t)}
+    .ba{background:var(--amber);color:var(--amber-t)}
+    .br{background:var(--rojo);color:var(--rojo-t)}
+    .bb{background:var(--azul);color:var(--azul-t)}
+    /* NIVELES */
+    .nivel-oro{background:var(--oro);color:var(--oro-t);font-size:12px;padding:3px 10px;border-radius:99px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+    .nivel-plata{background:var(--plata);color:var(--plata-t);font-size:12px;padding:3px 10px;border-radius:99px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+    .nivel-bronce{background:var(--bronce);color:var(--bronce-t);font-size:12px;padding:3px 10px;border-radius:99px;font-weight:700;display:inline-flex;align-items:center;gap:4px}
+    .nivel-nuevo{background:var(--gris);color:var(--gris-t);font-size:12px;padding:3px 10px;border-radius:99px;font-weight:600;display:inline-flex;align-items:center;gap:4px}
+    /* BOTONES */
+    .btn-msg{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:4px 9px;border-radius:7px;border:1.5px solid #3b82f6;color:#1d4ed8;background:transparent;cursor:pointer;font-weight:600}
+    .btn-msg:hover{background:var(--azul)}
+    .btn-wa{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:4px 9px;border-radius:7px;border:1.5px solid #22c55e;color:#16a34a;background:transparent;text-decoration:none;cursor:pointer;font-weight:600}
+    .btn-wa:hover{background:var(--verde-c)}
+    .btn-hist{display:inline-flex;align-items:center;gap:4px;font-size:12px;padding:4px 9px;border-radius:7px;border:1.5px solid var(--borde);color:var(--gris-t);background:transparent;cursor:pointer;font-weight:500}
+    .btn-hist:hover{background:var(--gris)}
+    .bg{display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+    .env-tag{font-size:11px;color:var(--verde-t);background:var(--verde-c);border-radius:99px;padding:2px 7px;font-weight:600}
+    /* MODAL */
+    .mbg{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:200;align-items:flex-start;justify-content:center;padding:1rem;overflow-y:auto}
+    .mbg.open{display:flex}
+    .modal{background:var(--blanco);border-radius:14px;padding:1.5rem;max-width:600px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,0.25);margin:auto}
+    .mh{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+    .mt{font-size:16px;font-weight:700}
+    .mx{background:none;border:none;font-size:22px;cursor:pointer;color:var(--gris-t);line-height:1}
+    .minfo{font-size:13px;color:var(--gris-t);margin-bottom:.75rem;padding-bottom:.75rem;border-bottom:1px solid var(--borde)}
+    .minfo strong{color:var(--texto)}
+    .mtxt{width:100%;min-height:180px;padding:12px;border:1px solid var(--borde);border-radius:8px;font-size:13px;font-family:inherit;resize:vertical;line-height:1.7;color:var(--texto);background:var(--gris);outline:none}
+    .mtxt:focus{border-color:var(--verde);background:var(--blanco)}
+    .mtip{font-size:11px;color:var(--gris-t);margin:6px 0 1rem}
+    .mf{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+    .btn-cancel{padding:8px 16px;border-radius:8px;border:1px solid var(--borde);background:var(--blanco);color:var(--gris-t);font-size:13px;cursor:pointer;font-weight:500}
+    .btn-copy{padding:8px 14px;border-radius:8px;border:1px solid var(--borde);background:var(--blanco);color:var(--gris-t);font-size:13px;cursor:pointer;font-weight:500}
+    .btn-copy.ok{background:var(--verde-c);color:var(--verde-t);border-color:#86efac}
+    .btn-send{padding:8px 18px;border-radius:8px;border:none;background:#25D366;color:white;font-size:13px;cursor:pointer;font-weight:700;display:flex;align-items:center;gap:6px}
+    .btn-send:hover{background:#1da851}
+    /* MODAL HISTORIAL */
+    .hist-sec{margin-bottom:1rem}
+    .hist-title{font-size:13px;font-weight:600;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--borde)}
+    .hist-item{padding:8px 10px;border-radius:8px;background:var(--gris);margin-bottom:6px;font-size:13px}
+    .hist-item-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+    .hist-item strong{color:var(--texto)}
+    .hist-date{font-size:11px;color:var(--gris-t)}
+    .hist-item p{font-size:12px;color:var(--gris-t);line-height:1.5}
+    .hist-prod{font-size:12px;color:var(--gris-t)}
+    .empty-hist{font-size:13px;color:var(--gris-t);text-align:center;padding:1rem}
+    /* IMPORT */
+    .imp-sec{max-width:640px;margin:0 auto}
+    .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem}
+    @media(max-width:600px){.steps{grid-template-columns:1fr}}
+    .step{background:var(--blanco);border:1px solid var(--borde);border-radius:var(--radio);padding:1rem;text-align:center;box-shadow:var(--sombra)}
+    .snum{width:30px;height:30px;border-radius:50%;background:var(--verde);color:white;font-size:14px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;margin-bottom:8px}
+    .step p{font-size:12px;color:var(--gris-t);line-height:1.5}
+    .drop{border:2px dashed var(--borde);border-radius:var(--radio);padding:3rem 2rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--blanco)}
+    .drop:hover,.drop.over{border-color:var(--verde);background:var(--verde-c)}
+    .drop h3{font-size:16px;font-weight:600;margin:.75rem 0 4px}
+    .drop p{font-size:13px;color:var(--gris-t)}
+    .file-input{display:none}
+    .sbox{margin-top:1rem;padding:12px 16px;border-radius:var(--radio);font-size:13px;display:none;font-weight:500}
+    .sok{background:var(--verde-c);color:var(--verde-t);border:1px solid #86efac}
+    .serr{background:var(--rojo);color:var(--rojo-t);border:1px solid #fca5a5}
+    .sinf{background:var(--azul);color:var(--azul-t);border:1px solid #93c5fd}
+    .prev-box{margin-top:1.5rem;display:none}
+    .prev-box h4{font-size:13px;font-weight:600;margin-bottom:8px}
     /* REACTIVAR */
-    .react-card { background: var(--blanco); border: 1px solid var(--gris-borde); border-radius: var(--radio); padding: 1.25rem; margin-bottom: 12px; box-shadow: var(--sombra); }
-    .react-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; flex-wrap: wrap; gap: 8px; }
-    .react-name { font-size: 15px; font-weight: 700; color: var(--texto); }
-    .react-meta { font-size: 12px; color: var(--gris-texto); margin-top: 3px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-    .msg-box { font-size: 13px; color: #374151; background: var(--gris); border-radius: 8px; padding: 12px 14px; line-height: 1.7; white-space: pre-wrap; border: 1px solid var(--gris-borde); margin-bottom: 10px; }
-    .react-btns { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .copy-btn { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 6px 12px; border-radius: 8px; border: 1px solid var(--gris-borde); background: var(--blanco); color: var(--gris-texto); cursor: pointer; font-weight: 500; }
-    .copy-btn:hover { background: var(--gris); }
-    .copy-btn.ok { background: var(--verde-claro); color: var(--verde-texto); border-color: #86efac; }
-    .trunc { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
-    .filter-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
-    .flt { font-size: 12px; padding: 5px 12px; border-radius: 99px; border: 1px solid var(--gris-borde); background: var(--blanco); color: var(--gris-texto); cursor: pointer; font-weight: 500; }
-    .flt.on { background: var(--verde); color: white; border-color: var(--verde); }
-    .empty { text-align: center; padding: 3rem; color: var(--gris-texto); font-size: 14px; }
+    .rc{background:var(--blanco);border:1px solid var(--borde);border-radius:var(--radio);padding:1.25rem;margin-bottom:12px;box-shadow:var(--sombra)}
+    .rc-name{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+    .rc-meta{font-size:12px;color:var(--gris-t);margin-bottom:10px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .msgprev{font-size:13px;color:#374151;background:var(--gris);border-radius:8px;padding:12px 14px;line-height:1.7;border:1px solid var(--borde);margin-bottom:8px;white-space:pre-wrap;max-height:90px;overflow:hidden}
+    .msgprev.exp{max-height:none}
+    .ver-mas{font-size:11px;color:var(--verde);font-weight:600;cursor:pointer;margin-bottom:10px;display:inline-block}
+    .flt-row{display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap}
+    .flt{font-size:12px;padding:5px 12px;border-radius:99px;border:1px solid var(--borde);background:var(--blanco);color:var(--gris-t);cursor:pointer;font-weight:500}
+    .flt.on{background:var(--verde);color:white;border-color:var(--verde)}
+    .empty{text-align:center;padding:3rem;color:var(--gris-t);font-size:14px}
+    /* HISTORIAL PANEL */
+    .info-banner{padding:10px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--radio);font-size:13px;color:#9a3412;margin-bottom:1rem}
+    .rank{width:22px;height:22px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;background:var(--borde);color:var(--gris-t)}
+    .rg{background:#fef9c3;color:#854d0e}
+    .rs{background:#f1f5f9;color:#475569}
+    .rb{background:#fff7ed;color:#9a3412}
+    .trunc{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   </style>
 </head>
 <body>
 
 <nav>
-  <div class="nav-logo"><span>💊</span> Labs Nutrition</div>
-  <div class="nav-tabs">
-    <button class="nav-tab active" onclick="sw('importar',this)">📥 Importar</button>
-    <button class="nav-tab" onclick="sw('panel',this)">📊 Panel <span class="badge-nav" id="badge-clientes">0</span></button>
-    <button class="nav-tab" onclick="sw('reactivar',this)">💬 Reactivar <span class="badge-nav" id="badge-dormidos">0</span></button>
-  </div>
+  <div class="logo">💊 Labs Nutrition</div>
+  <button class="nav-tab active" onclick="sw('importar',this)">📥 Importar</button>
+  <button class="nav-tab" onclick="sw('panel',this)">📊 Panel <span class="bnav" id="bnav-c">0</span></button>
+  <button class="nav-tab" onclick="sw('reactivar',this)">💬 Reactivar <span class="bnav" id="bnav-d">0</span></button>
+  <button class="nav-tab" onclick="sw('historial',this)">📋 Historial <span class="bnav" id="bnav-h">0</span></button>
+  <button class="nav-tab" onclick="sw('niveles',this)">🏅 Niveles</button>
 </nav>
+
+<!-- MODAL MENSAJE -->
+<div class="mbg" id="modalMsg" onclick="if(event.target===this)cModal()">
+  <div class="modal">
+    <div class="mh"><div class="mt">✉️ Enviar mensaje por WhatsApp</div><button class="mx" onclick="cModal()">✕</button></div>
+    <div class="minfo" id="minfo"></div>
+    <textarea class="mtxt" id="mtxt"></textarea>
+    <div class="mtip">💡 Podés editar el mensaje. Al hacer clic en "Abrir WhatsApp" se abre con el texto listo.</div>
+    <div class="mf">
+      <button class="btn-cancel" onclick="cModal()">Cancelar</button>
+      <button class="btn-copy" id="bcopy" onclick="copiarModal()">📋 Copiar</button>
+      <button class="btn-send" onclick="enviarWA()">💬 Abrir WhatsApp</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL HISTORIAL CLIENTE -->
+<div class="mbg" id="modalHist" onclick="if(event.target===this)cHist()">
+  <div class="modal">
+    <div class="mh"><div class="mt" id="mh-title">📋 Historial del cliente</div><button class="mx" onclick="cHist()">✕</button></div>
+    <div id="mh-body"></div>
+  </div>
+</div>
 
 <main>
 
-  <!-- IMPORTAR -->
-  <div id="panel-importar" class="panel active">
-    <div class="import-section">
-      <div class="steps-row">
-        <div class="step-box"><div class="step-num">1</div><p>Andá a <strong>Tienda Nube → Ventas → Exportar</strong> y descargá el CSV</p></div>
-        <div class="step-box"><div class="step-num">2</div><p>Arrastrá el archivo acá abajo o hacé clic para seleccionarlo</p></div>
-        <div class="step-box"><div class="step-num">3</div><p>El panel y los mensajes de reactivación se actualizan solos automáticamente</p></div>
-      </div>
-      <div class="card">
-        <div style="padding:1.5rem">
-          <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
-            <div class="drop-icon">📂</div>
-            <h3>Arrastrá el CSV de ventas acá</h3>
-            <p>o hacé clic para buscar el archivo en tu computadora</p>
-          </div>
-          <input type="file" id="fileInput" class="file-input" accept=".csv" onchange="loadCSV(this.files[0])">
-          <div id="statusBox" class="status-box"></div>
-          <div id="previewBox" class="preview-box">
-            <h4>Vista previa — últimas ventas importadas:</h4>
-            <div class="table-wrap card"><table><thead id="prevHead"></thead><tbody id="prevBody"></tbody></table></div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PANEL -->
-  <div id="panel-panel" class="panel">
-    <div class="stats-grid">
-      <div class="stat-card"><div class="stat-label">Ventas totales</div><div class="stat-value" id="st-ventas">—</div><div class="stat-sub">en pesos</div></div>
-      <div class="stat-card"><div class="stat-label">Clientes únicos</div><div class="stat-value" id="st-clientes">—</div><div class="stat-sub">compradores</div></div>
-      <div class="stat-card"><div class="stat-label">Recurrentes</div><div class="stat-value" id="st-recurrentes">—</div><div class="stat-sub">más de 1 compra</div></div>
-      <div class="stat-card"><div class="stat-label">Sin compras recientes</div><div class="stat-value" id="st-dormidos">—</div><div class="stat-sub">más de 90 días</div></div>
+<!-- IMPORTAR -->
+<div id="panel-importar" class="panel active">
+  <div class="imp-sec">
+    <div class="steps">
+      <div class="step"><div class="snum">1</div><p>Andá a <strong>Tienda Nube → Ventas → Exportar</strong> y descargá el CSV</p></div>
+      <div class="step"><div class="snum">2</div><p>Arrastrá el archivo acá o hacé clic para seleccionarlo</p></div>
+      <div class="step"><div class="snum">3</div><p>El panel, niveles, historial y mensajes se actualizan solos</p></div>
     </div>
     <div class="card">
-      <div class="card-header">
-        <span class="card-title">🏆 Clientes por total gastado</span>
-        <div class="filter-row" style="margin:0">
-          <button class="flt on" onclick="setFlt('todos',this)">Todos</button>
-          <button class="flt" onclick="setFlt('recurrentes',this)">Recurrentes</button>
-          <button class="flt" onclick="setFlt('nuevos',this)">Nuevos</button>
-          <button class="flt" onclick="setFlt('dormidos',this)">Dormidos</button>
+      <div style="padding:1.5rem">
+        <div class="drop" id="dropZone" onclick="document.getElementById('fi').click()" ondragover="dov(event)" ondragleave="dol()" ondrop="ddr(event)">
+          <div style="font-size:48px">📂</div>
+          <h3>Arrastrá el CSV de ventas acá</h3>
+          <p>o hacé clic para buscar el archivo</p>
         </div>
-        <input class="search-input" type="text" placeholder="🔍 Buscar cliente..." oninput="renderPanel()" id="searchInput">
-      </div>
-      <div class="table-wrap">
-        <table>
-          <thead><tr>
-            <th>#</th>
-            <th>Cliente</th>
-            <th>Total gastado</th>
-            <th>Compras</th>
-            <th>Última compra</th>
-            <th>Ciudad</th>
-            <th>WhatsApp</th>
-          </tr></thead>
-          <tbody id="panelBody"></tbody>
-        </table>
+        <input type="file" id="fi" class="file-input" accept=".csv" onchange="loadCSV(this.files[0])">
+        <div id="sbox" class="sbox"></div>
+        <div id="pbox" class="prev-box">
+          <h4>Vista previa:</h4>
+          <div class="tw card"><table><thead id="ph"></thead><tbody id="pb"></tbody></table></div>
+        </div>
       </div>
     </div>
   </div>
+</div>
 
-  <!-- REACTIVAR -->
-  <div id="panel-reactivar" class="panel">
-    <div style="margin-bottom:1rem;padding:12px 16px;background:#fff7ed;border:1px solid #fed7aa;border-radius:var(--radio);font-size:13px;color:#9a3412">
-      ⚠️ Estos clientes gastaron mucho pero llevan más de 90 días sin comprar. Mandales un mensaje personalizado para que vuelvan.
-    </div>
-    <div id="reactCards"><div class="empty">Importá un CSV de ventas para ver los mensajes de reactivación.</div></div>
+<!-- PANEL -->
+<div id="panel-panel" class="panel">
+  <div class="stats-grid">
+    <div class="sc"><div class="sc-l">Ventas totales</div><div class="sc-v" id="st-v">—</div><div class="sc-s">en pesos</div></div>
+    <div class="sc"><div class="sc-l">Clientes únicos</div><div class="sc-v" id="st-c">—</div><div class="sc-s">compradores</div></div>
+    <div class="sc"><div class="sc-l">🥇 Oro</div><div class="sc-v" id="st-o">—</div><div class="sc-s">5+ compras</div></div>
+    <div class="sc"><div class="sc-l">🥈 Plata</div><div class="sc-v" id="st-p">—</div><div class="sc-s">2-4 compras</div></div>
+    <div class="sc"><div class="sc-l">Dormidos +90d</div><div class="sc-v" id="st-d">—</div><div class="sc-s">sin comprar</div></div>
   </div>
+  <div class="card">
+    <div class="ch">
+      <span class="ct">🏆 Clientes</span>
+      <div class="flt-row" style="margin:0">
+        <button class="flt on" onclick="setF('todos',this)">Todos</button>
+        <button class="flt" onclick="setF('oro',this)">🥇 Oro</button>
+        <button class="flt" onclick="setF('plata',this)">🥈 Plata</button>
+        <button class="flt" onclick="setF('bronce',this)">🥉 Bronce</button>
+        <button class="flt" onclick="setF('dormidos',this)">💤 Dormidos</button>
+      </div>
+      <input class="srch" type="text" placeholder="🔍 Buscar..." oninput="renderPanel()" id="srch">
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>#</th><th>Cliente</th><th>Nivel</th><th>Total gastado</th><th>Compras</th><th>Última compra</th><th>Ciudad</th><th>Acciones</th></tr></thead>
+        <tbody id="pbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- REACTIVAR -->
+<div id="panel-reactivar" class="panel">
+  <div class="info-banner">⚠️ Clientes con +90 días sin comprar. Mensaje personalizado según sus productos — podés editarlo antes de enviar.</div>
+  <div id="rcards"><div class="empty">Importá un CSV para ver los mensajes de reactivación.</div></div>
+</div>
+
+<!-- HISTORIAL -->
+<div id="panel-historial" class="panel">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1.5rem" id="hist-stats">
+    <div class="sc"><div class="sc-l">Mensajes enviados</div><div class="sc-v" id="hs-env">0</div><div class="sc-s">desde este dispositivo</div></div>
+    <div class="sc"><div class="sc-l">Último envío</div><div class="sc-v" id="hs-ult" style="font-size:16px">—</div><div class="sc-s">fecha del último mensaje</div></div>
+  </div>
+  <div class="card">
+    <div class="ch"><span class="ct">📋 Registro de mensajes enviados</span></div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Fecha y hora</th><th>Cliente</th><th>Teléfono</th><th>Mensaje enviado</th></tr></thead>
+        <tbody id="hbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- NIVELES -->
+<div id="panel-niveles" class="panel">
+  <div style="margin-bottom:1rem;padding:12px 16px;background:var(--verde-c);border:1px solid #86efac;border-radius:var(--radio);font-size:13px;color:var(--verde-t)">
+    🏅 Los niveles se calculan automáticamente según la cantidad de compras de cada cliente.
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:1.5rem">
+    <div class="sc" style="border-top:3px solid #eab308">
+      <div style="font-size:24px;margin-bottom:6px">🥇</div>
+      <div class="sc-l">Oro</div>
+      <div class="sc-v" id="niv-o">—</div>
+      <div class="sc-s">5 o más compras · Beneficios VIP</div>
+      <div style="margin-top:10px;font-size:12px;color:var(--gris-t);line-height:1.5">✓ Envío gratis<br>✓ Descuento 15%<br>✓ Acceso anticipado a novedades<br>✓ Regalo en cada compra</div>
+    </div>
+    <div class="sc" style="border-top:3px solid #94a3b8">
+      <div style="font-size:24px;margin-bottom:6px">🥈</div>
+      <div class="sc-l">Plata</div>
+      <div class="sc-v" id="niv-p">—</div>
+      <div class="sc-s">2 a 4 compras · Beneficios especiales</div>
+      <div style="margin-top:10px;font-size:12px;color:var(--gris-t);line-height:1.5">✓ Envío gratis en compras +$5000<br>✓ Descuento 8%<br>✓ Prioridad en atención</div>
+    </div>
+    <div class="sc" style="border-top:3px solid #cd7c2f">
+      <div style="font-size:24px;margin-bottom:6px">🥉</div>
+      <div class="sc-l">Bronce</div>
+      <div class="sc-v" id="niv-b">—</div>
+      <div class="sc-s">1 compra · Bienvenida</div>
+      <div style="margin-top:10px;font-size:12px;color:var(--gris-t);line-height:1.5">✓ Descuento 5% próxima compra<br>✓ Guía de uso de productos</div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch">
+      <span class="ct">🥇 Clientes Oro — para contactar con beneficios VIP</span>
+      <input class="srch" type="text" placeholder="🔍 Buscar..." oninput="renderNiveles(this.value)" id="nsrch">
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>#</th><th>Cliente</th><th>Nivel</th><th>Compras</th><th>Total gastado</th><th>Última compra</th><th>Acciones</th></tr></thead>
+      <tbody id="nbody"></tbody>
+    </table></div>
+  </div>
+</div>
 
 </main>
 
 <script>
-let clientes = [];
-let filtroActual = 'todos';
+let clientes=[], filtroActual='todos', clienteModal=null;
+const enviados=JSON.parse(localStorage.getItem('labs_enviados')||'[]');
+const historial=JSON.parse(localStorage.getItem('labs_historial')||'[]');
 
-// DRAG & DROP
-function onDragOver(e){ e.preventDefault(); document.getElementById('dropZone').classList.add('over'); }
-function onDragLeave(e){ document.getElementById('dropZone').classList.remove('over'); }
-function onDrop(e){ e.preventDefault(); document.getElementById('dropZone').classList.remove('over'); const f=e.dataTransfer.files[0]; if(f) loadCSV(f); }
+// DRAG DROP
+function dov(e){e.preventDefault();document.getElementById('dropZone').classList.add('over')}
+function dol(){document.getElementById('dropZone').classList.remove('over')}
+function ddr(e){e.preventDefault();dol();loadCSV(e.dataTransfer.files[0])}
 
-function showStatus(msg, tipo){
-  const el = document.getElementById('statusBox');
-  el.className = 'status-box status-' + tipo;
-  el.innerHTML = msg;
-  el.style.display = 'block';
-}
+function showS(msg,t){const el=document.getElementById('sbox');el.className='sbox s'+t;el.innerHTML=msg;el.style.display='block'}
 
 function loadCSV(file){
-  if(!file) return;
-  if(!file.name.endsWith('.csv')){ showStatus('❌ El archivo debe ser un CSV exportado desde Tienda Nube.','err'); return; }
-  showStatus('⏳ Procesando ' + file.name + '...', 'info');
-  Papa.parse(file, {
-    header: true,
-    encoding: 'latin1',
-    skipEmptyLines: true,
-    complete: function(results){
-      try {
-        processData(results.data);
-        showStatus('✅ <strong>' + file.name + '</strong> importado correctamente — ' + results.data.length.toLocaleString('es-AR') + ' filas procesadas. Andá al Panel o a Reactivar.', 'ok');
-        showPreview(results.data.slice(0,5));
-      } catch(e){ showStatus('❌ Error al procesar el archivo. Verificá que sea el CSV de Tienda Nube.','err'); }
-    },
-    error: function(){ showStatus('❌ No se pudo leer el archivo.','err'); }
+  if(!file)return;
+  if(!file.name.endsWith('.csv')){showS('❌ El archivo debe ser un CSV de Tienda Nube.','err');return}
+  showS('⏳ Procesando '+file.name+'...','inf');
+  Papa.parse(file,{header:true,encoding:'latin1',skipEmptyLines:true,
+    complete:function(r){
+      try{processData(r.data);showS('✅ <strong>'+file.name+'</strong> importado — '+r.data.length.toLocaleString('es-AR')+' filas. ¡Listo!','ok');showPrev(r.data.slice(0,5))}
+      catch(e){showS('❌ Error. Verificá que sea el CSV de Tienda Nube.','err')}
+    },error:function(){showS('❌ No se pudo leer el archivo.','err')}
   });
 }
 
-function showPreview(rows){
-  const cols = ['Número de orden','Nombre del comprador','Fecha','Total','Estado de la orden'];
-  document.getElementById('prevHead').innerHTML = '<tr>' + cols.map(c=>'<th>'+c+'</th>').join('') + '</tr>';
-  document.getElementById('prevBody').innerHTML = rows.map(r=>'<tr>'+cols.map(c=>'<td>'+(r[c]||'—')+'</td>').join('')+'</tr>').join('');
-  document.getElementById('previewBox').style.display = 'block';
+function showPrev(rows){
+  const cols=['Número de orden','Nombre del comprador','Fecha','Total','Estado de la orden'];
+  document.getElementById('ph').innerHTML='<tr>'+cols.map(c=>'<th>'+c+'</th>').join('')+'</tr>';
+  document.getElementById('pb').innerHTML=rows.map(r=>'<tr>'+cols.map(c=>'<td>'+(r[c]||'—')+'</td>').join('')+'</tr>').join('');
+  document.getElementById('pbox').style.display='block';
 }
 
-function parseDate(s){
-  if(!s) return null;
-  try{ const p=s.trim().split(' ')[0].split('/'); return new Date(p[2],p[1]-1,p[0]); }
-  catch(e){ return null; }
+function parseDate(s){if(!s)return null;try{const p=s.trim().split(' ')[0].split('/');return new Date(p[2],p[1]-1,p[0])}catch(e){return null}}
+function fixTel(t){if(!t)return '';const n=t.toString().replace(/\D/g,'');return n.length>6?n:''}
+function fmt(n){return '$'+Math.round(n).toLocaleString('es-AR')}
+function acP(p){return p.replace(/\s*\(.*?\)\s*/g,'').replace(/\s*-\s*.*/,'').trim()}
+
+function nivel(c){
+  if(c.Cantidad_compras>=5)return 'oro';
+  if(c.Cantidad_compras>=2)return 'plata';
+  if(c.Cantidad_compras>=1)return 'bronce';
+  return 'nuevo';
+}
+
+function nivelBadge(c){
+  const n=nivel(c);
+  if(n==='oro')return '<span class="nivel-oro">🥇 Oro</span>';
+  if(n==='plata')return '<span class="nivel-plata">🥈 Plata</span>';
+  if(n==='bronce')return '<span class="nivel-bronce">🥉 Bronce</span>';
+  return '<span class="nivel-nuevo">🆕 Nuevo</span>';
 }
 
 function processData(rows){
-  // Deduplicate by order number
-  const seen = new Set();
-  const orders = rows.filter(r => {
-    const key = r['Número de orden'];
-    if(!key || seen.has(key)) return false;
-    seen.add(key); return true;
-  }).filter(r => r['Nombre del comprador'] && r['Nombre del comprador'] !== 'No informado');
+  const seen=new Set();
+  const orders=rows.filter(r=>{const k=r['Número de orden'];if(!k||seen.has(k))return false;seen.add(k);return true})
+    .filter(r=>r['Nombre del comprador']&&r['Nombre del comprador']!=='No informado');
 
-  // Products per email
-  const prodMap = {};
+  const prodMap={},comprasMap={};
   rows.filter(r=>r['Email']&&r['Nombre del producto']).forEach(r=>{
-    if(!prodMap[r['Email']]) prodMap[r['Email']] = new Set();
+    if(!prodMap[r['Email']])prodMap[r['Email']]=new Set();
     prodMap[r['Email']].add(r['Nombre del producto']);
   });
 
-  // Group by email
-  const map = {};
-  orders.forEach(r => {
-    const email = r['Email'] || r['Nombre del comprador'];
-    if(!map[email]){
-      map[email] = {
-        Nombre: r['Nombre del comprador'],
-        Email: email,
-        Telefono: fixTel(r['Teléfono']),
-        Total_gastado: 0,
-        Cantidad_compras: 0,
-        Ultima_compra_str: r['Fecha'] || '',
-        Ultima_compra_dt: parseDate(r['Fecha']),
-        Ciudad: r['Ciudad'] || '',
-        Provincia: r['Provincia o estado'] || '',
-      };
-    }
-    const total = parseFloat((r['Total']||'0').replace(',','.'));
-    if(!isNaN(total)) map[email].Total_gastado += total;
-    map[email].Cantidad_compras++;
-    const dt = parseDate(r['Fecha']);
-    if(dt && (!map[email].Ultima_compra_dt || dt > map[email].Ultima_compra_dt)){
-      map[email].Ultima_compra_dt = dt;
-      map[email].Ultima_compra_str = r['Fecha'] ? r['Fecha'].substring(0,10) : '';
-    }
+  // Map orders per client for history
+  orders.forEach(r=>{
+    const email=r['Email']||r['Nombre del comprador'];
+    if(!comprasMap[email])comprasMap[email]=[];
+    comprasMap[email].push({orden:r['Número de orden'],fecha:r['Fecha']||'',total:parseFloat((r['Total']||'0').replace(',','.'))||0,estado:r['Estado de la orden']||''});
   });
 
-  const hoy = new Date();
-  clientes = Object.values(map).map(c => {
-    const dias = c.Ultima_compra_dt ? Math.floor((hoy - c.Ultima_compra_dt)/(1000*60*60*24)) : 999;
-    const prods = prodMap[c.Email] ? [...prodMap[c.Email]].slice(0,2) : [];
-    return {...c, dias, Productos: prods, Total_gastado: Math.round(c.Total_gastado)};
-  }).sort((a,b) => b.Total_gastado - a.Total_gastado);
+  const map={};
+  orders.forEach(r=>{
+    const email=r['Email']||r['Nombre del comprador'];
+    if(!map[email])map[email]={Nombre:r['Nombre del comprador'],Email:email,Telefono:fixTel(r['Teléfono']),Total_gastado:0,Cantidad_compras:0,Ultima_compra_str:r['Fecha']||'',Ultima_compra_dt:parseDate(r['Fecha']),Ciudad:r['Ciudad']||'',Provincia:r['Provincia o estado']||''};
+    const total=parseFloat((r['Total']||'0').replace(',','.'));
+    if(!isNaN(total))map[email].Total_gastado+=total;
+    map[email].Cantidad_compras++;
+    const dt=parseDate(r['Fecha']);
+    if(dt&&(!map[email].Ultima_compra_dt||dt>map[email].Ultima_compra_dt)){map[email].Ultima_compra_dt=dt;map[email].Ultima_compra_str=r['Fecha']?r['Fecha'].substring(0,10):''}
+  });
 
-  updateStats();
-  renderPanel();
-  renderReactivar();
-  document.getElementById('badge-clientes').textContent = clientes.length;
-  const dormidos = clientes.filter(c=>c.dias>90).length;
-  document.getElementById('badge-dormidos').textContent = dormidos;
+  const hoy=new Date();
+  clientes=Object.values(map).map(c=>{
+    const dias=c.Ultima_compra_dt?Math.floor((hoy-c.Ultima_compra_dt)/(1000*60*60*24)):999;
+    const prods=prodMap[c.Email]?[...prodMap[c.Email]].slice(0,3):[];
+    const compras=comprasMap[c.Email]||[];
+    return{...c,dias,Productos:prods,Compras_detalle:compras,Total_gastado:Math.round(c.Total_gastado)};
+  }).sort((a,b)=>b.Total_gastado-a.Total_gastado);
+
+  updateStats();renderPanel();renderReactivar();renderNiveles('');renderHistorial();
+  document.getElementById('bnav-c').textContent=clientes.length;
+  document.getElementById('bnav-d').textContent=clientes.filter(c=>c.dias>90).length;
+  document.getElementById('bnav-h').textContent=historial.length;
 }
-
-function fixTel(t){
-  if(!t) return '';
-  const n = t.toString().replace(/\D/g,'');
-  if(n.length < 6) return '';
-  return n;
-}
-
-function fmt(n){ return '$' + Math.round(n).toLocaleString('es-AR'); }
 
 function updateStats(){
-  const total = clientes.reduce((s,c)=>s+c.Total_gastado,0);
-  document.getElementById('st-ventas').textContent = '$' + (total/1000000).toFixed(1) + 'M';
-  document.getElementById('st-clientes').textContent = clientes.length.toLocaleString('es-AR');
-  document.getElementById('st-recurrentes').textContent = clientes.filter(c=>c.Cantidad_compras>1).length;
-  document.getElementById('st-dormidos').textContent = clientes.filter(c=>c.dias>90).length;
+  const total=clientes.reduce((s,c)=>s+c.Total_gastado,0);
+  document.getElementById('st-v').textContent='$'+(total/1000000).toFixed(1)+'M';
+  document.getElementById('st-c').textContent=clientes.length.toLocaleString('es-AR');
+  document.getElementById('st-o').textContent=clientes.filter(c=>nivel(c)==='oro').length;
+  document.getElementById('st-p').textContent=clientes.filter(c=>nivel(c)==='plata').length;
+  document.getElementById('st-d').textContent=clientes.filter(c=>c.dias>90).length;
+  document.getElementById('niv-o').textContent=clientes.filter(c=>nivel(c)==='oro').length+' clientes';
+  document.getElementById('niv-p').textContent=clientes.filter(c=>nivel(c)==='plata').length+' clientes';
+  document.getElementById('niv-b').textContent=clientes.filter(c=>nivel(c)==='bronce').length+' clientes';
 }
 
-function setFlt(tipo, btn){
-  filtroActual = tipo;
-  document.querySelectorAll('.flt').forEach(b=>b.classList.remove('on'));
-  btn.classList.add('on');
-  renderPanel();
-}
+function setF(t,btn){filtroActual=t;document.querySelectorAll('.flt').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderPanel()}
 
 function rankEl(i){
-  if(i===0) return '<span class="rank g">1</span>';
-  if(i===1) return '<span class="rank s">2</span>';
-  if(i===2) return '<span class="rank b">3</span>';
+  if(i===0)return '<span class="rank rg">1</span>';
+  if(i===1)return '<span class="rank rs">2</span>';
+  if(i===2)return '<span class="rank rb">3</span>';
   return '<span class="rank">'+(i+1)+'</span>';
 }
 
-function waLink(tel){
-  if(!tel) return '<span style="color:#94a3b8;font-size:12px">—</span>';
-  return '<a class="wa-btn" href="https://wa.me/'+tel+'" target="_blank">💬 Chat</a>';
-}
-
-function diasBadge(d){
-  if(d>365) return '<span class="badge badge-rojo">'+d+' días</span>';
-  if(d>90) return '<span class="badge badge-amber">'+d+' días</span>';
-  return '<span class="badge badge-verde">'+d+' días</span>';
+function genMsg(c){
+  const nombre=c.Nombre.split(' ')[0];
+  const p1=c.Productos[0]?acP(c.Productos[0]):'nuestros productos';
+  const p2=c.Productos[1]?acP(c.Productos[1]):null;
+  const nv=nivel(c);
+  if(nv==='oro')
+    return `Hola ${nombre}! 👋\n\nSos cliente Oro de Labs Nutrition 🥇 — eso significa que sos parte de nuestros clientes más especiales.\n\nComo miembro VIP tenés: envío gratis, 15% de descuento y acceso anticipado a novedades.\n\n¿Necesitás reponer ${p1}${p2?' o '+p2:''}? Escribinos y te armamos el pedido con todos tus beneficios 🚀\n\nSaludos, equipo Labs Nutrition 💚`;
+  if(c.dias>365)
+    return `Hola ${nombre}! 👋\n\nHace más de un año que no sabemos nada de vos y te extrañamos como cliente.\n\nRecordamos que probaste ${p1}${p2?' y '+p2:''} — ¿cómo te fue?\n\nTe dejamos un 10% de descuento exclusivo para que vuelvas: VUELVE10 🎁\n\nSaludos, equipo Labs Nutrition 💚`;
+  if(c.Cantidad_compras>=5)
+    return `Hola ${nombre}! 💪\n\nSos uno de nuestros clientes más fieles con ${c.Cantidad_compras} compras.\n\n¿Necesitás reponer ${p1}? Por ser cliente frecuente tenés envío gratis en tu próxima compra.\n\nEscribinos 🚀 Saludos, Labs Nutrition 💚`;
+  if(c.dias>180)
+    return `Hola ${nombre}! 👋\n\nHace varios meses que no comprás. ¿Todo bien con ${p1}?\n\nTenemos novedades que te pueden interesar. Estamos acá 💊\n\nSaludos, Labs Nutrition 💚`;
+  return `Hola ${nombre}! Te escribimos desde Labs Nutrition 🌿\n\n¿Cómo estás? Notamos que hace un tiempo que no comprás. ¿Todo bien con ${p1}?\n\nEstamos para ayudarte. Saludos del equipo! 💚`;
 }
 
 function renderPanel(){
-  const q = (document.getElementById('searchInput')||{value:''}).value.toLowerCase();
-  let data = [...clientes];
-  if(filtroActual==='recurrentes') data = data.filter(c=>c.Cantidad_compras>1);
-  if(filtroActual==='nuevos') data = data.filter(c=>c.Cantidad_compras===1);
-  if(filtroActual==='dormidos') data = data.filter(c=>c.dias>90);
-  if(q) data = data.filter(c=>c.Nombre.toLowerCase().includes(q) || c.Email.toLowerCase().includes(q));
-  const pb = document.getElementById('panelBody');
-  if(!data.length){ pb.innerHTML='<tr><td colspan="7" class="empty">No hay resultados.</td></tr>'; return; }
-  pb.innerHTML = data.map((c,i)=>`
-    <tr>
+  const q=(document.getElementById('srch')||{value:''}).value.toLowerCase();
+  let data=[...clientes];
+  if(filtroActual==='oro')data=data.filter(c=>nivel(c)==='oro');
+  if(filtroActual==='plata')data=data.filter(c=>nivel(c)==='plata');
+  if(filtroActual==='bronce')data=data.filter(c=>nivel(c)==='bronce');
+  if(filtroActual==='dormidos')data=data.filter(c=>c.dias>90);
+  if(q)data=data.filter(c=>c.Nombre.toLowerCase().includes(q)||c.Email.toLowerCase().includes(q));
+  const pb=document.getElementById('pbody');
+  if(!data.length){pb.innerHTML='<tr><td colspan="8" class="empty">No hay resultados.</td></tr>';return}
+  pb.innerHTML=data.map((c,i)=>{
+    const yaEnv=enviados.some(e=>e.email===c.Email);
+    const eS=c.Email.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return`<tr>
       <td>${rankEl(i)}</td>
-      <td><div style="font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.Nombre}</div><div style="font-size:11px;color:#94a3b8;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.Email}</div></td>
+      <td><div style="font-weight:600;max-width:150px" class="trunc">${c.Nombre}</div><div style="font-size:11px;color:#94a3b8;max-width:150px" class="trunc">${c.Email}</div></td>
+      <td>${nivelBadge(c)}</td>
       <td style="font-weight:600">${fmt(c.Total_gastado)}</td>
-      <td><span class="badge badge-azul">${c.Cantidad_compras}</span></td>
-      <td style="font-size:12px;color:#64748b">${c.Ultima_compra_str||'—'}</td>
-      <td style="font-size:12px;color:#64748b;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.Ciudad||'—'}</td>
-      <td>${waLink(c.Telefono)}</td>
-    </tr>`).join('');
-}
-
-function genMsg(c){
-  const nombre = c.Nombre.split(' ')[0];
-  const p1 = c.Productos[0] ? acortarProd(c.Productos[0]) : 'nuestros productos';
-  const p2 = c.Productos[1] ? acortarProd(c.Productos[1]) : null;
-  if(c.dias > 365){
-    return `Hola ${nombre}! 👋\n\nHace más de un año que no sabemos nada de vos y la verdad es que te extrañamos como cliente.\n\nRecordamos que probaste ${p1}${p2?' y '+p2:''} — ¿cómo te fue? Queremos saber si podemos ayudarte con algo.\n\nTe dejamos un 10% de descuento exclusivo para que vuelvas cuando quieras: VUELVE10 🎁\n\nSaludos, equipo Labs Nutrition 💚`;
-  } else if(c.Cantidad_compras >= 5){
-    return `Hola ${nombre}! 💪\n\nSos uno de nuestros clientes más fieles con ${c.Cantidad_compras} compras y te lo agradecemos de verdad.\n\nHace un tiempo que no te vemos por acá. ¿Necesitás reponer ${p1}?\n\nPor ser cliente frecuente tenés envío gratis en tu próxima compra. Escribinos y te ayudamos a armar el pedido 🚀\n\nSaludos, Labs Nutrition 💚`;
-  } else if(c.dias > 180){
-    return `Hola ${nombre}! 👋\n\nHace varios meses que no comprás y queríamos chequear cómo estás.\n\n¿Seguís usando ${p1}? Tenemos novedades que te pueden interesar basadas en lo que compraste antes.\n\nEntrá a nuestra tienda o escribinos, con gusto te asesoramos 💊\n\nSaludos, Labs Nutrition 💚`;
-  } else {
-    return `Hola ${nombre}! Te escribimos desde Labs Nutrition 🌿\n\nNotamos que hace un tiempo que no comprás. ¿Todo bien con ${p1}?\n\nSi necesitás reponer o querés probar algo nuevo, estamos acá para ayudarte. Tenemos combos que se complementan muy bien con lo que ya usás.\n\nSaludos del equipo! 💪`;
-  }
-}
-
-function acortarProd(p){
-  return p.replace(/\s*\(.*?\)\s*/g,'').replace(/\s*-\s*.*/,'').trim();
+      <td><span class="badge bb">${c.Cantidad_compras}</span></td>
+      <td style="font-size:12px;color:var(--gris-t)">${c.Ultima_compra_str||'—'}</td>
+      <td style="font-size:12px;color:var(--gris-t);max-width:100px" class="trunc">${c.Ciudad||'—'}</td>
+      <td><div class="bg">
+        <button class="btn-msg" onclick="aModal('${eS}')">✉️</button>
+        ${c.Telefono?`<a class="btn-wa" href="https://wa.me/${c.Telefono}" target="_blank" onclick="regEnv('${eS}',null,'${c.Telefono}')">💬</a>`:''}
+        <button class="btn-hist" onclick="aHist('${eS}')">📋</button>
+        ${yaEnv?'<span class="env-tag">✓</span>':''}
+      </div></td>
+    </tr>`;
+  }).join('');
 }
 
 function renderReactivar(){
-  const dormidos = clientes.filter(c=>c.dias>90).sort((a,b)=>b.Total_gastado-a.Total_gastado);
-  const rc = document.getElementById('reactCards');
-  if(!dormidos.length){ rc.innerHTML='<div class="empty">🎉 No hay clientes dormidos. ¡Todos compraron recientemente!</div>'; return; }
-  rc.innerHTML = dormidos.map((c,i)=>{
-    const msg = genMsg(c);
-    const id = 'msg'+i;
-    return `
-    <div class="react-card">
-      <div class="react-top">
-        <div>
-          <div class="react-name">${c.Nombre}</div>
-          <div class="react-meta">
-            ${diasBadge(c.dias)}
-            <span>${fmt(c.Total_gastado)} gastado</span>
-            <span>${c.Cantidad_compras} compras</span>
-            ${c.Productos.length ? '<span style="color:#94a3b8">· '+c.Productos.map(p=>acortarProd(p)).join(', ')+'</span>' : ''}
-          </div>
-        </div>
+  const dormidos=clientes.filter(c=>c.dias>90).sort((a,b)=>b.Total_gastado-a.Total_gastado);
+  const rc=document.getElementById('rcards');
+  if(!dormidos.length){rc.innerHTML='<div class="empty">🎉 No hay clientes dormidos!</div>';return}
+  rc.innerHTML=dormidos.map((c,i)=>{
+    const msg=genMsg(c);
+    const yaEnv=enviados.some(e=>e.email===c.Email);
+    const db=c.dias>365?'br':c.dias>180?'ba':'bb';
+    const eS=c.Email.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    const mS=msg.replace(/\\/g,'\\\\').replace(/'/g,"\\'").replace(/\r?\n/g,'\\n');
+    return`<div class="rc">
+      <div class="rc-name">${c.Nombre} ${nivelBadge(c)} ${yaEnv?'<span class="env-tag">✓ enviado</span>':''}</div>
+      <div class="rc-meta">
+        <span class="badge ${db}">${c.dias} días sin comprar</span>
+        <span>${fmt(c.Total_gastado)} gastado</span>
+        <span>${c.Cantidad_compras} compras</span>
+        ${c.Productos.length?'<span style="color:#94a3b8">'+c.Productos.map(p=>acP(p)).join(', ')+'</span>':''}
       </div>
-      <div class="msg-box" id="${id}">${msg}</div>
-      <div class="react-btns">
-        <button class="copy-btn" id="btn${i}" onclick="copyMsg('${id}','btn${i}')">📋 Copiar mensaje</button>
-        ${c.Telefono ? `<a class="wa-btn" href="https://wa.me/${c.Telefono}" target="_blank">💬 Abrir WhatsApp</a>` : '<span style="font-size:12px;color:#94a3b8">Sin teléfono registrado</span>'}
+      <div class="msgprev" id="mp${i}">${msg}</div>
+      <span class="ver-mas" onclick="toggleMsg(${i})">▼ ver completo</span>
+      <div class="bg">
+        <button class="btn-msg" onclick="aModal('${eS}','${mS}')">✏️ Editar y enviar</button>
+        ${c.Telefono?`<a class="btn-wa" href="https://wa.me/${c.Telefono}?text=${encodeURIComponent(msg)}" target="_blank" onclick="regEnv('${eS}',null,'${c.Telefono}')">💬 Enviar directo</a>`:'<span style="font-size:12px;color:#94a3b8">Sin teléfono</span>'}
+        <button class="btn-hist" onclick="aHist('${eS}')">📋 Ver historial</button>
       </div>
     </div>`;
   }).join('');
 }
 
-function copyMsg(id, btnId){
-  const txt = document.getElementById(id).innerText;
-  navigator.clipboard.writeText(txt).then(()=>{
-    const btn = document.getElementById(btnId);
-    btn.classList.add('ok');
-    btn.textContent = '✅ Copiado!';
-    setTimeout(()=>{ btn.classList.remove('ok'); btn.textContent = '📋 Copiar mensaje'; }, 2000);
+function renderNiveles(q){
+  const data=q?clientes.filter(c=>c.Nombre.toLowerCase().includes(q.toLowerCase())||c.Email.toLowerCase().includes(q.toLowerCase())):clientes.filter(c=>nivel(c)==='oro');
+  const nb=document.getElementById('nbody');
+  if(!data.length){nb.innerHTML='<tr><td colspan="7" class="empty">No hay resultados.</td></tr>';return}
+  nb.innerHTML=data.map((c,i)=>{
+    const eS=c.Email.replace(/'/g,"\\'").replace(/"/g,'&quot;');
+    return`<tr>
+      <td>${rankEl(i)}</td>
+      <td><div style="font-weight:600;max-width:160px" class="trunc">${c.Nombre}</div><div style="font-size:11px;color:#94a3b8;max-width:160px" class="trunc">${c.Email}</div></td>
+      <td>${nivelBadge(c)}</td>
+      <td><span class="badge bb">${c.Cantidad_compras}</span></td>
+      <td style="font-weight:600">${fmt(c.Total_gastado)}</td>
+      <td style="font-size:12px;color:var(--gris-t)">${c.Ultima_compra_str||'—'}</td>
+      <td><div class="bg">
+        <button class="btn-msg" onclick="aModal('${eS}')">✉️ Mensaje VIP</button>
+        ${c.Telefono?`<a class="btn-wa" href="https://wa.me/${c.Telefono}" target="_blank" onclick="regEnv('${eS}',null,'${c.Telefono}')">💬</a>`:''}
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderHistorial(){
+  const hb=document.getElementById('hbody');
+  document.getElementById('hs-env').textContent=historial.length;
+  if(historial.length){
+    const ult=historial[historial.length-1];
+    document.getElementById('hs-ult').textContent=ult.fecha||'—';
+  }
+  document.getElementById('bnav-h').textContent=historial.length;
+  if(!historial.length){hb.innerHTML='<tr><td colspan="4" class="empty">Todavía no enviaste ningún mensaje desde este sistema.</td></tr>';return}
+  hb.innerHTML=[...historial].reverse().map(h=>`<tr>
+    <td style="font-size:12px;white-space:nowrap">${h.fecha||'—'}</td>
+    <td style="font-weight:600">${h.nombre||'—'}</td>
+    <td style="font-size:12px;color:var(--gris-t)">${h.tel?'+'+h.tel:'—'}</td>
+    <td style="font-size:12px;color:var(--gris-t);max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${(h.msg||'').split('\n')[0]}...</td>
+  </tr>`).join('');
+}
+
+// MODAL MENSAJE
+function aModal(email,msgParam){
+  clienteModal=clientes.find(x=>x.Email===email)||clientes.find(x=>x.Email.replace(/'/g,"\\'")===email);
+  if(!clienteModal)return;
+  const msg=msgParam?msgParam.replace(/\\n/g,'\n'):genMsg(clienteModal);
+  document.getElementById('minfo').innerHTML=
+    '<strong>'+clienteModal.Nombre+'</strong> · '+fmt(clienteModal.Total_gastado)+' gastado · '+clienteModal.Cantidad_compras+' compra'+(clienteModal.Cantidad_compras>1?'s':'')+' · '+nivelBadge(clienteModal)+
+    (clienteModal.Telefono?' · <span style="color:var(--verde)">📱 +'+clienteModal.Telefono+'</span>':' · <span style="color:var(--rojo-t)">Sin teléfono</span>');
+  document.getElementById('mtxt').value=msg;
+  document.getElementById('bcopy').textContent='📋 Copiar';
+  document.getElementById('bcopy').classList.remove('ok');
+  document.getElementById('modalMsg').classList.add('open');
+}
+
+function cModal(){document.getElementById('modalMsg').classList.remove('open');clienteModal=null}
+
+function enviarWA(){
+  if(!clienteModal)return;
+  const msg=document.getElementById('mtxt').value;
+  regEnv(clienteModal.Email,msg,clienteModal.Telefono);
+  if(!clienteModal.Telefono){
+    navigator.clipboard.writeText(msg);
+    alert('Sin teléfono registrado. El mensaje fue copiado — buscalo en WhatsApp manualmente.');
+    cModal();return;
+  }
+  window.open('https://wa.me/'+clienteModal.Telefono+'?text='+encodeURIComponent(msg),'_blank');
+  cModal();
+}
+
+function copiarModal(){
+  navigator.clipboard.writeText(document.getElementById('mtxt').value).then(()=>{
+    const btn=document.getElementById('bcopy');
+    btn.textContent='✅ Copiado!';btn.classList.add('ok');
+    setTimeout(()=>{btn.textContent='📋 Copiar';btn.classList.remove('ok')},2000);
   });
 }
 
-function sw(name, btn){
+function regEnv(email,msg,tel){
+  const c=clientes.find(x=>x.Email===email)||clientes.find(x=>x.Email.replace(/'/g,"\\'")===email);
+  if(!c)return;
+  // Avoid duplicate in enviados
+  if(!enviados.some(e=>e.email===email)) enviados.push({email:email});
+  // Add to historial
+  const ahora=new Date();
+  const fecha=ahora.toLocaleDateString('es-AR')+' '+ahora.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+  historial.push({email:email,nombre:c?c.Nombre:email,tel:tel||'',fecha:fecha,msg:msg||genMsg(c)});
+  localStorage.setItem('labs_enviados',JSON.stringify(enviados));
+  localStorage.setItem('labs_historial',JSON.stringify(historial));
+  renderPanel();renderReactivar();renderHistorial();
+}
+
+// MODAL HISTORIAL CLIENTE
+function aHist(email){
+  const c=clientes.find(x=>x.Email===email)||clientes.find(x=>x.Email.replace(/'/g,"\\'")===email);
+  if(!c)return;
+  document.getElementById('mh-title').textContent='📋 '+c.Nombre+' — historial completo';
+  const msgs=historial.filter(h=>h.email===email);
+  const compras=c.Compras_detalle||[];
+  let html='';
+  // Mensajes
+  html+='<div class="hist-sec"><div class="hist-title">✉️ Mensajes enviados ('+msgs.length+')</div>';
+  if(!msgs.length) html+='<div class="empty-hist">No le enviaste mensajes todavía.</div>';
+  else html+=[...msgs].reverse().map(m=>`<div class="hist-item">
+    <div class="hist-item-top"><strong>Mensaje enviado</strong><span class="hist-date">${m.fecha}</span></div>
+    <p>${(m.msg||'').substring(0,120)}${(m.msg||'').length>120?'...':''}</p>
+  </div>`).join('');
+  html+='</div>';
+  // Compras
+  html+='<div class="hist-sec"><div class="hist-title">🛒 Compras ('+compras.length+')</div>';
+  if(!compras.length) html+='<div class="empty-hist">Sin compras registradas.</div>';
+  else html+=[...compras].sort((a,b)=>new Date(b.fecha)-new Date(a.fecha)).map(comp=>`<div class="hist-item">
+    <div class="hist-item-top"><strong>Orden #${comp.orden}</strong><span class="hist-date">${comp.fecha?comp.fecha.substring(0,10):''}</span></div>
+    <p>${fmt(comp.total)} · ${comp.estado}</p>
+  </div>`).join('');
+  html+='</div>';
+  // Productos
+  if(c.Productos.length){
+    html+='<div class="hist-sec"><div class="hist-title">📦 Productos comprados</div>';
+    html+=c.Productos.map(p=>`<div class="hist-item"><p>${p}</p></div>`).join('');
+    html+='</div>';
+  }
+  document.getElementById('mh-body').innerHTML=html;
+  document.getElementById('modalHist').classList.add('open');
+}
+function cHist(){document.getElementById('modalHist').classList.remove('open')}
+
+function toggleMsg(i){
+  const el=document.getElementById('mp'+i);
+  el.classList.toggle('exp');
+  el.nextElementSibling.textContent=el.classList.contains('exp')?'▲ cerrar':'▼ ver completo';
+}
+
+function sw(name,btn){
   document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
   btn.classList.add('active');
   document.getElementById('panel-'+name).classList.add('active');
 }
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){cModal();cHist()}});
 </script>
 </body>
 </html>
