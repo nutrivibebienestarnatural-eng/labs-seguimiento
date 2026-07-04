@@ -55,7 +55,7 @@
                 Nombre: c.N, Email: c.E, Telefono: c.T || '',
                 Total_gastado: c.V, Cantidad_compras: c.C,
                 Ultima_compra_str: c.U || '', Ciudad: c.CI || '',
-                Provincia: '', dias: c.D, Productos: c.P || [],
+                Provincia: c.PR || '', dias: c.D, Productos: c.P || [],
                 Compras_detalle: []
               }));
               todosClientes = todosClientes.concat(reconstruidos);
@@ -91,6 +91,7 @@
           N: c.Nombre, E: c.Email, T: c.Telefono || '',
           V: c.Total_gastado, C: c.Cantidad_compras,
           U: c.Ultima_compra_str || '', CI: c.Ciudad || '',
+          PR: c.Provincia || '',
           D: c.dias, P: (c.Productos || []).slice(0, 2)
         }));
 
@@ -350,6 +351,7 @@
         <button class="flt" onclick="setF('plata',this)">🥈 Plata</button>
         <button class="flt" onclick="setF('bronce',this)">🥉 Bronce</button>
         <button class="flt" onclick="setF('dormidos',this)">💤 Dormidos</button>
+        <button class="flt" onclick="setF('caba',this)">🏙️ CABA</button>
       </div>
       <input class="srch" type="text" placeholder="🔍 Buscar..." oninput="renderPanel()" id="srch">
     </div>
@@ -496,6 +498,15 @@ function updateStats(){
   document.getElementById('niv-b').textContent=clientes.filter(c=>nivel(c)==='bronce').length+' clientes';
 }
 
+function esCABA(c){
+  const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const prov=norm(c.Provincia), ciu=norm(c.Ciudad);
+  // Provincia: "Capital Federal" o "Ciudad Autónoma de Buenos Aires" = CABA. "Buenos Aires" a secas es la provincia (GBA), NO es CABA.
+  if(prov.includes('capital federal')||prov.includes('ciudad autonoma')||prov==='caba')return true;
+  if(prov)return false; // tiene provincia y no es CABA
+  // Sin provincia (datos viejos): probamos con la ciudad
+  return ciu.includes('capital federal')||ciu.includes('ciudad autonoma')||ciu==='caba'||ciu.includes('c.a.b.a');
+}
 function setF(t,btn){ filtroActual=t; document.querySelectorAll('.flt').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); renderPanel(); }
 function rankEl(i){ if(i===0)return '<span class="rank rg">1</span>'; if(i===1)return '<span class="rank rs">2</span>'; if(i===2)return '<span class="rank rb">3</span>'; return '<span class="rank">'+(i+1)+'</span>'; }
 
@@ -518,6 +529,7 @@ function renderPanel(){
   if(filtroActual==='plata')data=data.filter(c=>nivel(c)==='plata');
   if(filtroActual==='bronce')data=data.filter(c=>nivel(c)==='bronce');
   if(filtroActual==='dormidos')data=data.filter(c=>c.dias>90);
+  if(filtroActual==='caba')data=data.filter(c=>esCABA(c));
   if(q)data=data.filter(c=>c.Nombre.toLowerCase().includes(q)||c.Email.toLowerCase().includes(q));
   const pb=document.getElementById('pbody');
   if(!data.length){pb.innerHTML='<tr><td colspan="8" class="empty">No hay resultados.</td></tr>';return}
