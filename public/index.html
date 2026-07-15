@@ -351,20 +351,19 @@
         <button class="flt" onclick="setF('plata',this)">🥈 Plata</button>
         <button class="flt" onclick="setF('bronce',this)">🥉 Bronce</button>
         <button class="flt" onclick="setF('dormidos',this)">💤 Dormidos</button>
-        <button class="flt" onclick="setF('caba',this)">🏙️ CABA</button>
+        <button class="flt" onclick="setF('caba',this)">🏙️ CABA + AMBA</button>
       </div>
       <div id="campanaCaba" style="display:none;margin-top:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:14px">
-        <div style="font-weight:700;font-size:13px;margin-bottom:6px">📣 Mensaje de campaña — Envío en el día CABA</div>
-        <textarea id="msgCampana" style="width:100%;min-height:130px;border:1px solid var(--borde);border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical">¡Hola {nombre}! 👋 ¿Cómo estás? Te saludamos del equipo de Labs Nutrition 💚
+        <div style="font-weight:700;font-size:13px;margin-bottom:6px">📣 Mensaje de campaña — Envíos directos CABA + AMBA</div>
+        <textarea id="msgCampana" style="width:100%;min-height:130px;border:1px solid var(--borde);border-radius:8px;padding:10px;font-size:13px;font-family:inherit;resize:vertical">¡Hola {nombre}! 😃 Te saludamos del equipo de Labs Nutrition 💚 Tenemos dos novedades para vos:
 
-Te escribimos para contarte que a partir del martes 7 habilitamos ENVÍOS FLEX para Capital Federal 🏙️⚡
+📦 Ahora hacemos ENVÍOS DIRECTOS desde Buenos Aires a CABA y AMBA — tus pedidos llegan más rápido y sin vueltas.
 
-✅ Comprá antes de las 14 hs y tu pedido llega EN EL DÍA
-✅ Al finalizar la compra, elegí la opción de envío "A COORDINAR"
-✅ Nosotros nos encargamos del resto
+🆕 ¡Sumamos PRODUCTOS NUEVOS! Ya podés verlos en nuestra tienda online.
 
-Tus suplementos, más rápido que nunca 💪
-👉 labsnutrition.com.ar</textarea>
+Mirá todo acá 👉 https://www.labsnutrition.com.ar/productos/
+
+Cualquier consulta, escribinos. ¡Un abrazo! 🙌</textarea>
         <div style="font-size:12px;color:var(--gris-t);margin-top:6px">Escribí <strong>{nombre}</strong> donde quieras que aparezca el nombre del cliente. Al tocar 💬 se abre WhatsApp con este mensaje ya cargado.</div>
       </div>
       <input class="srch" type="text" placeholder="🔍 Buscar..." oninput="renderPanel()" id="srch">
@@ -521,6 +520,19 @@ function esCABA(c){
   // Sin provincia (datos viejos): probamos con la ciudad
   return ciu.includes('capital federal')||ciu.includes('ciudad autonoma')||ciu==='caba'||ciu.includes('c.a.b.a');
 }
+function esAMBA(c){
+  if(esCABA(c))return false;
+  const norm=s=>(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  const prov=norm(c.Provincia), ciu=norm(c.Ciudad);
+  const otras=['cordoba','santa fe','mendoza','tucuman','salta','entre rios','san luis','san juan','neuquen','rio negro','chubut','santa cruz','tierra del fuego','la pampa','la rioja','catamarca','jujuy','formosa','chaco','corrientes','misiones','santiago del estero'];
+  if(otras.some(p=>prov.includes(p)))return false;
+  const zonas=['avellaneda','lanus','lomas de zamora','banfield','temperley','la matanza','ramos mejia','san justo','gonzalez catan','laferrere','isidro casanova','moron','castelar','haedo','el palomar','hurlingham','ituzaingo','san fernando','san isidro','martinez','acassuso','beccar','boulogne','san martin','villa ballester','jose leon suarez','tres de febrero','caseros','ciudadela','saenz pena','vicente lopez','olivos','florida','munro','carapachay','villa martelli','tristan suarez','berazategui','quilmes','bernal','don bosco','wilde','sarandi','esteban echeverria','monte grande','ezeiza','benavidez','jose c paz','merlo','florencio varela','moreno','san miguel','tigre','malvinas argentinas','los polvorines','pacheco','grand bourg','tortuguitas','don torcuato','bella vista','nordelta','del viso','garin','derqui','villa rosa','pilar','lujan','escobar','maschwitz','general rodriguez','gral rodriguez','campana','guernica','la plata','ensenada','berisso','san vicente','canuelas','marcos paz','remedios de escalada','adrogue','burzaco','longchamps','glew','rafael calzada','claypole','ranelagh','hudson','city bell','gonnet','villa elisa'];
+  const match=zonas.some(z=>ciu.includes(z));
+  const esBsAs=prov.includes('buenos aires');
+  if(esBsAs&&match)return true;
+  if(!prov&&match)return true;
+  return false;
+}
 function setF(t,btn){ filtroActual=t; document.querySelectorAll('.flt').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); const cc=document.getElementById('campanaCaba'); if(cc)cc.style.display=(t==='caba')?'block':'none'; renderPanel(); }
 function rankEl(i){ if(i===0)return '<span class="rank rg">1</span>'; if(i===1)return '<span class="rank rs">2</span>'; if(i===2)return '<span class="rank rb">3</span>'; return '<span class="rank">'+(i+1)+'</span>'; }
 
@@ -543,7 +555,7 @@ function renderPanel(){
   if(filtroActual==='plata')data=data.filter(c=>nivel(c)==='plata');
   if(filtroActual==='bronce')data=data.filter(c=>nivel(c)==='bronce');
   if(filtroActual==='dormidos')data=data.filter(c=>c.dias>90);
-  if(filtroActual==='caba')data=data.filter(c=>esCABA(c));
+  if(filtroActual==='caba')data=data.filter(c=>esCABA(c)||esAMBA(c));
   if(q)data=data.filter(c=>c.Nombre.toLowerCase().includes(q)||c.Email.toLowerCase().includes(q));
   const pb=document.getElementById('pbody');
   if(!data.length){pb.innerHTML='<tr><td colspan="8" class="empty">No hay resultados.</td></tr>';return}
