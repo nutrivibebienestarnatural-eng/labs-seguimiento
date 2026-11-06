@@ -361,6 +361,13 @@
 
 🆕 ¡Sumamos PRODUCTOS NUEVOS! Ya podés verlos en nuestra tienda online.
 
+Hoy en la tienda tenés:
+🚚 Envío gratis desde $40.000
+🏷️ 10% OFF llevando 3 productos
+💳 3 cuotas sin interés desde $80.000
+🏷️ 15% OFF llevando 6 productos
+Las promos valen mezclando productos y no incluyen whey protein. Y pagando por transferencia tenés el mejor precio.
+
 Mirá todo acá 👉 https://www.labsnutrition.com.ar/productos/
 
 Cualquier consulta, escribinos. ¡Un abrazo! 🙌</textarea>
@@ -536,16 +543,61 @@ function esAMBA(c){
 function setF(t,btn){ filtroActual=t; document.querySelectorAll('.flt').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); const cc=document.getElementById('campanaCaba'); if(cc)cc.style.display=(t==='caba')?'block':'none'; renderPanel(); }
 function rankEl(i){ if(i===0)return '<span class="rank rg">1</span>'; if(i===1)return '<span class="rank rs">2</span>'; if(i===2)return '<span class="rank rb">3</span>'; return '<span class="rank">'+(i+1)+'</span>'; }
 
+/* Los 4 beneficios de la tienda (los mismos que muestra labsnutrition.com.ar). Si cambian en la tienda, se cambian acá. */
+const BENEFICIOS=`Hoy en la tienda tenés:
+🚚 Envío gratis desde $40.000
+🏷️ 10% OFF llevando 3 productos
+💳 3 cuotas sin interés desde $80.000
+🏷️ 15% OFF llevando 6 productos
+
+Las promos valen mezclando productos y no incluyen whey protein. Y pagando por transferencia tenés el mejor precio.
+🛒 https://www.labsnutrition.com.ar`;
 function genMsg(c){
   const nombre=c.Nombre.split(' ')[0];
   const p1=c.Productos&&c.Productos[0]?acP(c.Productos[0]):'nuestros productos';
   const p2=c.Productos&&c.Productos[1]?acP(c.Productos[1]):null;
   const nv=nivel(c);
-  if(nv==='oro') return `Hola ${nombre}! 👋\n\nSos cliente Oro de Labs Nutrition 🥇 — eso te hace parte de nuestros clientes más especiales.\n\nComo miembro VIP tenés: envío gratis, 15% de descuento y acceso anticipado a novedades.\n\n¿Necesitás reponer ${p1}${p2?' o '+p2:''}? Escribinos con tus beneficios 🚀\n\nSaludos, equipo Labs Nutrition 💚`;
-  if(c.dias>365) return `Hola ${nombre}! 👋\n\nHace más de un año que no sabemos nada de vos y te extrañamos.\n\nRecordamos que probaste ${p1}${p2?' y '+p2:''} — ¿cómo te fue?\n\nTe dejamos un 10% de descuento para que vuelvas: VUELVE10 🎁\n\nSaludos, Labs Nutrition 💚`;
-  if(c.Cantidad_compras>=5) return `Hola ${nombre}! 💪\n\nSos uno de nuestros clientes más fieles con ${c.Cantidad_compras} compras.\n\n¿Necesitás reponer ${p1}? Tenés envío gratis en tu próxima compra.\n\nEscribinos 🚀 Saludos, Labs Nutrition 💚`;
-  if(c.dias>180) return `Hola ${nombre}! 👋\n\nHace varios meses que no comprás. ¿Todo bien con ${p1}?\n\nTenemos novedades que te pueden interesar. Estamos acá 💊\n\nSaludos, Labs Nutrition 💚`;
-  return `Hola ${nombre}! Te escribimos desde Labs Nutrition 🌿\n\n¿Cómo estás? Hace un tiempo que no comprás. ¿Todo bien con ${p1}?\n\nEstamos para ayudarte. Saludos del equipo! 💚`;
+  if(nv==='oro') return `Hola ${nombre}! 👋
+
+Sos cliente Oro de Labs Nutrition 🥇 — eso te hace parte de nuestros clientes más especiales.
+
+¿Necesitás reponer ${p1}${p2?' o '+p2:''}?
+
+${BENEFICIOS}
+
+Saludos, equipo Labs Nutrition 💚`;
+  if(c.dias>365) return `Hola ${nombre}! 👋
+
+Hace más de un año que no sabemos nada de vos y te extrañamos.
+
+Recordamos que probaste ${p1}${p2?' y '+p2:''} — ¿cómo te fue?
+
+${BENEFICIOS}
+
+Saludos, Labs Nutrition 💚`;
+  if(c.Cantidad_compras>=5) return `Hola ${nombre}! 💪
+
+Sos uno de nuestros clientes más fieles con ${c.Cantidad_compras} compras.
+
+¿Necesitás reponer ${p1}?
+
+${BENEFICIOS}
+
+Escribinos 🚀 Saludos, Labs Nutrition 💚`;
+  if(c.dias>180) return `Hola ${nombre}! 👋
+
+Hace varios meses que no comprás. ¿Todo bien con ${p1}?
+
+${BENEFICIOS}
+
+Saludos, Labs Nutrition 💚`;
+  return `Hola ${nombre}! Te escribimos desde Labs Nutrition 🌿
+
+¿Cómo estás? Hace un tiempo que no comprás. ¿Todo bien con ${p1}?
+
+${BENEFICIOS}
+
+Saludos del equipo! 💚`;
 }
 
 function renderPanel(){
