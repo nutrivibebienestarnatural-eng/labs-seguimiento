@@ -65,7 +65,7 @@
           if (todosClientes.length > 0) {
             window.clientes = todosClientes;
             clientes = todosClientes;
-            updateStats(); renderPanel(); renderReactivar(); renderNiveles('');
+            updateStats(); renderPanel(); renderReactivar(); renderTanda(); renderNiveles('');
             document.getElementById('bnav-c').textContent = clientes.length;
             document.getElementById('bnav-d').textContent = clientes.filter(c=>c.dias>90).length;
             setStatus('ok', '✅ ' + todosClientes.length + ' clientes cargados — última importación: <strong>' + window._lastImport + '</strong>');
@@ -132,10 +132,11 @@
 
     async function cargarHistorial() {
       try {
-        const q = query(collection(db, 'mensajes'), orderBy('timestamp', 'desc'), limit(100));
+        const q = query(collection(db, 'mensajes'), orderBy('timestamp', 'desc'), limit(3000));
         const snap = await getDocs(q);
         window._historial = snap.docs.map(d => d.data());
         renderHistorial();
+        if(typeof renderTanda==='function') renderTanda();
         document.getElementById('bnav-h').textContent = window._historial.length;
       } catch(e) { console.error('Error cargando historial:', e); }
     }
@@ -275,6 +276,7 @@
   <div class="logo">💊 Labs Nutrition</div>
   <button class="nav-tab active" onclick="sw('importar',this)">📥 Importar</button>
   <button class="nav-tab" onclick="sw('panel',this)">📊 Panel <span class="bnav" id="bnav-c">0</span></button>
+  <button class="nav-tab" onclick="sw('tanda',this)">🗓️ Tanda de hoy <span class="bnav" id="bnav-t">0</span></button>
   <button class="nav-tab" onclick="sw('reactivar',this)">💬 Reactivar <span class="bnav" id="bnav-d">0</span></button>
   <button class="nav-tab" onclick="sw('historial',this)">📋 Historial <span class="bnav" id="bnav-h">0</span></button>
   <button class="nav-tab" onclick="sw('niveles',this)">🏅 Niveles</button>
@@ -382,6 +384,12 @@ Cualquier consulta, escribinos. ¡Un abrazo! 🙌</textarea>
       </table>
     </div>
   </div>
+</div>
+
+<!-- TANDA DE HOY -->
+<div id="panel-tanda" class="panel">
+  <div class="info-banner" id="tandaInfo">Importá un CSV para armar la tanda.</div>
+  <div id="tcards"><div class="empty">Importá un CSV para ver la tanda de hoy.</div></div>
 </div>
 
 <!-- REACTIVAR -->
@@ -501,7 +509,7 @@ function processData(rows) {
   orders.forEach(r=>{ const email=r['Email']||r['Nombre del comprador']; if(!map[email])map[email]={Nombre:r['Nombre del comprador'],Email:email,Telefono:fixTel(r['Teléfono']),Total_gastado:0,Cantidad_compras:0,Ultima_compra_str:r['Fecha']||'',Ultima_compra_dt:parseDate(r['Fecha']),Ciudad:r['Ciudad']||'',Provincia:r['Provincia o estado']||''}; const total=parseFloat((r['Total']||'0').replace(',','.')); if(!isNaN(total))map[email].Total_gastado+=total; map[email].Cantidad_compras++; const dt=parseDate(r['Fecha']); if(dt&&(!map[email].Ultima_compra_dt||dt>map[email].Ultima_compra_dt)){map[email].Ultima_compra_dt=dt;map[email].Ultima_compra_str=r['Fecha']?r['Fecha'].substring(0,10):'';} });
   const hoy = new Date();
   clientes = Object.values(map).map(c=>{ const dias=c.Ultima_compra_dt?Math.floor((hoy-c.Ultima_compra_dt)/(1000*60*60*24)):999; const prods=prodMap[c.Email]?[...prodMap[c.Email]].slice(0,3):[]; const comp=comprasMap[c.Email]||[]; return{...c,dias,Productos:prods,Compras_detalle:comp,Total_gastado:Math.round(c.Total_gastado)}; }).sort((a,b)=>b.Total_gastado-a.Total_gastado);
-  updateStats(); renderPanel(); renderReactivar(); renderNiveles('');
+  updateStats(); renderPanel(); renderReactivar(); renderTanda(); renderNiveles('');
   document.getElementById('bnav-c').textContent = clientes.length;
   document.getElementById('bnav-d').textContent = clientes.filter(c=>c.dias>90).length;
 }
@@ -622,6 +630,37 @@ function renderPanel(){
       if(plantilla)waTxt='?text='+encodeURIComponent(plantilla.split('{nombre}').join(primerNombre));
     }
     return`<tr><td>${rankEl(i)}</td><td><div style="font-weight:600;max-width:150px" class="trunc">${c.Nombre}</div><div style="font-size:11px;color:#94a3b8;max-width:150px" class="trunc">${c.Email}</div></td><td>${nivelBadge(c)}</td><td style="font-weight:600">${fmt(c.Total_gastado)}</td><td><span class="badge bb">${c.Cantidad_compras}</span></td><td style="font-size:12px;color:var(--gris-t)">${c.Ultima_compra_str||'—'}</td><td style="font-size:12px;color:var(--gris-t);max-width:100px" class="trunc">${c.Ciudad||'—'}</td><td><div class="bg"><button class="btn-msg" onclick="aModal('${eS}')">✉️</button>${c.Telefono?`<a class="btn-wa" href="https://wa.me/${c.Telefono}${waTxt}" target="_blank" onclick="regEnv('${eS}',null,'${c.Telefono}')">💬</a>`:''}<button class="btn-hist" onclick="aHist('${eS}')">📋</button>${yaEnv?'<span class="env-tag">✓</span>':''}</div></td></tr>`;
+  }).join('');
+}
+
+/* ===== TANDA DE HOY: de a TANDA_N clientes por día (Oro primero, luego Plata y Bronce) ===== */
+const TANDA_N=10;
+function tandaPendientes(){
+  const enviados=new Set((window._historial||[]).map(h=>h.email));
+  const rank={oro:0,plata:1,bronce:2,nuevo:3};
+  return (clientes||[]).filter(c=>c.dias>90&&c.Telefono&&!enviados.has(c.Email))
+    .sort((a,b)=>(rank[nivel(a)]-rank[nivel(b)])||(b.Total_gastado-a.Total_gastado));
+}
+function renderTanda(){
+  const box=document.getElementById('tcards'); if(!box)return;
+  if(!clientes||!clientes.length){return}
+  const hoy=new Date().toLocaleDateString('es-AR')+' ';
+  const hist=window._historial||[];
+  const hoyEmails=[];hist.forEach(h=>{ if((h.fecha||'').indexOf(hoy)===0 && hoyEmails.indexOf(h.email)<0) hoyEmails.push(h.email) });
+  const enviadosHoy=hoyEmails.map(e=>clientes.find(c=>c.Email===e)).filter(Boolean);
+  const pend=tandaPendientes();
+  const lista=enviadosHoy.concat(pend.slice(0,Math.max(0,TANDA_N-enviadosHoy.length)));
+  const restan=pend.length-Math.max(0,TANDA_N-enviadosHoy.length);
+  document.getElementById('bnav-t').textContent=Math.max(0,TANDA_N-enviadosHoy.length);
+  document.getElementById('tandaInfo').innerHTML='🗓️ <b>Tanda de hoy: '+enviadosHoy.length+' de '+TANDA_N+' enviados</b>. Tocá <b>💬 Enviar</b> en cada cliente, revisá el mensaje en WhatsApp y enviá. Después de la tanda quedan <b>'+Math.max(0,restan)+'</b> clientes con teléfono para los próximos días.'+(enviadosHoy.length>=TANDA_N?' ✅ <b>¡Tanda completa! Mañana siguen los próximos '+TANDA_N+'.</b>':'');
+  if(!lista.length){box.innerHTML='<div class="empty">🎉 No quedan clientes con teléfono para contactar.</div>';return}
+  box.innerHTML=lista.map(c=>{
+    const msg=genMsg(c);
+    const ya=hoyEmails.indexOf(c.Email)>=0;
+    const db=c.dias>365?'br2':c.dias>180?'ba':'bb';
+    const eS=encodeURIComponent(c.Email);
+    const mS=encodeURIComponent(msg);
+    return '<div class="rc"><div class="rc-name">'+c.Nombre+' '+nivelBadge(c)+' '+(ya?'<span class="env-tag">✓ enviado hoy</span>':'')+'</div><div class="rc-meta"><span class="badge '+db+'">'+c.dias+' días sin comprar</span><span>'+fmt(c.Total_gastado)+' gastado</span><span>'+c.Cantidad_compras+' compras</span>'+(c.Productos&&c.Productos.length?'<span style="color:#94a3b8">'+c.Productos.map(p=>acP(p)).join(', ')+'</span>':'')+'</div><details style="margin:8px 0"><summary style="cursor:pointer;font-size:12px;color:#64748b">Ver mensaje</summary><div class="msgprev" style="max-height:none;white-space:pre-wrap">'+msg.replace(/</g,'&lt;')+'</div></details><div class="bg"><button class="btn-msg" onclick="aModalMsg(\''+eS+'\',\''+mS+'\')">✏️ Editar y enviar</button><a class="btn-wa" href="https://wa.me/'+c.Telefono+'?text='+encodeURIComponent(msg)+'" target="_blank" onclick="regEnv(\''+eS+'\',null,\''+c.Telefono+'\')">💬 Enviar</a><button class="btn-hist" onclick="aHist(\''+eS+'\')">📋</button></div></div>';
   }).join('');
 }
 
